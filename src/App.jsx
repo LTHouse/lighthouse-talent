@@ -17,9 +17,9 @@ import {
 } from "recharts";
 
 // ============================================================
-// DATA IMPORTS — 154 candidates, 18 companies, 93 intros
+// DATA IMPORTS — 154 candidates, 18 companies, 93 intros, 24 jobs, 203 applications
 // ============================================================
-import { DATA_BUNDLE, INTROS } from './data.js';
+import { DATA_BUNDLE, INTROS, JOBS, APPLICATIONS } from './data.js';
 
 // ============================================================
 // CONSTANTS
@@ -662,6 +662,10 @@ const SAMPLE_LINKEDIN_PROFILES = [
 
 function CandidateIntakeFlow({ onExit }) {
   const [step, setStep] = useState(0);
+  const [showJobBoard, setShowJobBoard] = useState(false);
+  if (showJobBoard) {
+    return <TalentJobBoard onExit={() => setShowJobBoard(false)} />;
+  }
   const [profile, setProfile] = useState({
     firstName: "", lastName: "", email: "", phone: "", linkedin: "",
     currentRole: "", currentCompany: "", yearsExperience: 5, location: "",
@@ -697,7 +701,7 @@ function CandidateIntakeFlow({ onExit }) {
         )}
       </div>
       <div className="max-w-3xl mx-auto px-6 py-10">
-        {step === 0 && <CandidateLanding onStart={next} />}
+        {step === 0 && <CandidateLanding onStart={next} onBrowseJobs={() => setShowJobBoard(true)} />}
         {step === 1 && <ConnectCareer profile={profile} update={update} onNext={next} onBack={back} />}
         {step === 2 && <ReviewProfile profile={profile} update={update} onNext={next} onBack={back} />}
         {step === 3 && <BasicsForm profile={profile} update={update} onNext={next} onBack={back} />}
@@ -709,13 +713,13 @@ function CandidateIntakeFlow({ onExit }) {
                                             }}
                                             onBack={back} />}
         {step === 6 && <ArchetypeResult profile={profile} onNext={next} onBack={() => setStep(5)} />}
-        {step === 7 && <Confirmation profile={profile} onExit={onExit} onTakeAssessment={() => setStep(5)} />}
+        {step === 7 && <Confirmation profile={profile} onExit={onExit} onTakeAssessment={() => setStep(5)} onBrowseJobs={() => setShowJobBoard(true)} />}
       </div>
     </div>
   );
 }
 
-function CandidateLanding({ onStart }) {
+function CandidateLanding({ onStart, onBrowseJobs }) {
   return (
     <div className="space-y-8">
       <div className="text-center mb-2">
@@ -753,6 +757,13 @@ function CandidateLanding({ onStart }) {
         <div className="text-xs text-stone-500">
           Required: ~7 minutes. Optional 5-minute archetype dive available at the end.
         </div>
+        {onBrowseJobs && (
+          <div className="pt-2">
+            <button onClick={onBrowseJobs} className="text-sm text-stone-700 hover:text-amber-600 underline underline-offset-4">
+              Or browse open jobs first →
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1148,7 +1159,7 @@ function ScoreBar({ leftLabel, rightLabel, leftScore, rightScore }) {
   );
 }
 
-function Confirmation({ profile, onExit, onTakeAssessment }) {
+function Confirmation({ profile, onExit, onTakeAssessment, onBrowseJobs }) {
   const a = profile.archetype ? ARCHETYPES[profile.archetype] : null;
   return (
     <div className="space-y-6 text-center">
@@ -1196,7 +1207,8 @@ function Confirmation({ profile, onExit, onTakeAssessment }) {
           ))}
         </div>
       </Card>
-      <div className="pt-4">
+      <div className="pt-4 flex flex-col items-center gap-3">
+        {onBrowseJobs && <Button size="lg" icon={Briefcase} onClick={onBrowseJobs}>Browse open jobs while you wait</Button>}
         <Button variant="secondary" icon={Mail} onClick={onExit}>Subscribe to Zap's Wrap</Button>
       </div>
       <button onClick={onExit} className="text-sm text-stone-500 hover:text-amber-500">Back to home</button>
@@ -1300,6 +1312,11 @@ function CompanyPortal({ onExit, preselectedCompanyId }) {
         {view === "intros" && (
           <IntrosView companyId={me} onOpenCandidate={(id) => { setActiveId(id); setView("profile"); }} />
         )}
+        {view === "browse" && (
+          <BrowseDatabase
+            onOpenProfile={(id) => { setActiveId(id); setView("profile"); }}
+            companyId={me} shortlists={shortlists} setShortlists={setShortlists} />
+        )}
       </div>
     </div>
   );
@@ -1318,6 +1335,7 @@ function CompanyShellHeader({ company, onExit, setView, view }) {
           <nav className="hidden md:flex items-center gap-1">
             {[
               { k: "home", l: "Search", icon: Search },
+              { k: "browse", l: "Browse", icon: Database },
               { k: "intros", l: "Intros", icon: Coffee },
               { k: "searches", l: "My Searches", icon: BookOpenCheck },
               { k: "shortlists", l: "Shortlists", icon: Star },
@@ -2117,8 +2135,9 @@ function AdminPortal({ onExit }) {
         {[
           { k: "database", l: "Database", icon: Database },
           { k: "applications", l: "Pending", icon: KanbanSquare },
+          { k: "jobBoard", l: "Job Board", icon: Briefcase },
           { k: "archetypeMap", l: "Archetype Map", icon: Map },
-          { k: "hiringRequests", l: "Hiring Requests", icon: Briefcase },
+          { k: "hiringRequests", l: "Hiring Requests", icon: BookOpenCheck },
           { k: "settings", l: "Settings", icon: Settings },
         ].map(it => (
           <button key={it.k} onClick={() => setView(it.k)}
@@ -2155,6 +2174,7 @@ function AdminPortal({ onExit }) {
           {view === "applications" && <AdminPending candidates={candidates} onOpen={(id) => { setActiveId(id); setView("profile"); }} updateCandidate={updateCandidate} />}
           {view === "archetypeMap" && <AdminArchetypeMap candidates={candidates} onOpen={(id) => { setActiveId(id); setView("profile"); }} />}
           {view === "hiringRequests" && <AdminHiring />}
+          {view === "jobBoard" && <AdminJobBoard onOpenCandidate={(id) => { setActiveId(id); setView("profile"); }} />}
           {view === "settings" && <AdminSettings />}
           {view === "profile" && (
             <AdminCandidateProfile
@@ -2543,6 +2563,402 @@ function AdminSettings() {
         <div className="text-sm text-stone-500 mb-3">Edit the 16 candidate archetype statements and the 12+12 company assessment statements. Changes affect future assessments only.</div>
         <Button size="sm" variant="secondary" icon={Edit3}>Edit archetype statements</Button>
       </Card>
+    </div>
+  );
+}
+
+// ============================================================
+// JOB CARD — reusable job posting display
+// ============================================================
+const JOB_STATUS_META = {
+  open: { label: "Open", color: "green" },
+  paused: { label: "Paused", color: "default" },
+  filled: { label: "Filled", color: "default" },
+};
+
+function JobCard({ job, company, applicationCount, onApply, onView, alreadyApplied, applicationStatus, compact = false }) {
+  return (
+    <Card className="hover:border-stone-400 transition">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="font-display text-xl">{job.title}</div>
+            <Tag color={JOB_STATUS_META[job.status]?.color}>{JOB_STATUS_META[job.status]?.label}</Tag>
+            {alreadyApplied && <Tag color="yellow"><Sparkles size={10} /> {applicationStatus === 'hired' ? 'Hired 🎉' : applicationStatus === 'advanced' ? 'Advanced' : applicationStatus === 'review' ? 'In review' : applicationStatus === 'declined' ? 'Passed' : 'Applied'}</Tag>}
+          </div>
+          {company && (
+            <div className="text-sm text-stone-500 mt-0.5">
+              <span className="font-semibold text-stone-700">{company.name}</span> · {company.stage} · {company.industry}
+            </div>
+          )}
+          <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-stone-500">
+            <span><MapPin size={11} className="inline mr-0.5" /> {job.location}</span>
+            <span><Briefcase size={11} className="inline mr-0.5" /> {job.workMode}</span>
+            <span><DollarSign size={11} className="inline" />{job.salaryMin}–{job.salaryMax}K{job.equity ? ` · ${job.equity} equity` : ""}</span>
+            <span><Calendar size={11} className="inline mr-0.5" /> Posted {job.postedAt}</span>
+            {applicationCount !== undefined && <span><Users size={11} className="inline mr-0.5" /> {applicationCount} applicant{applicationCount === 1 ? "" : "s"}</span>}
+          </div>
+          {!compact && <div className="text-sm text-stone-700 mt-3">{job.summary}</div>}
+          <div className="flex flex-wrap gap-1 mt-3">{job.skills.slice(0, 6).map(s => <Tag key={s}>{s}</Tag>)}</div>
+        </div>
+        <div className="flex flex-col gap-2 self-start">
+          {onApply && !alreadyApplied && job.status === 'open' && <Button size="sm" icon={Send} onClick={onApply}>Apply</Button>}
+          {alreadyApplied && <Tag color="green">Applied</Tag>}
+          {onView && <Button size="sm" variant="ghost" icon={Eye} onClick={onView}>Details</Button>}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+// ============================================================
+// COMPANY: BROWSE DATABASE — view all active talent without running a search
+// ============================================================
+function BrowseDatabase({ onOpenProfile, companyId, shortlists, setShortlists }) {
+  const [search, setSearch] = useState("");
+  const [filterRole, setFilterRole] = useState("all");
+  const [filterArch, setFilterArch] = useState("all");
+  const [filterStage, setFilterStage] = useState("all");
+
+  const candidates = useMemo(() => {
+    return DATA_BUNDLE.candidates.filter(c => c.vettingStatus === 'Active' && !c.declined);
+  }, []);
+
+  const filtered = useMemo(() => {
+    return candidates.filter(c => {
+      if (filterRole !== "all" && c.primaryRole !== filterRole) return false;
+      if (filterArch !== "all" && c.archetype !== filterArch) return false;
+      if (filterStage !== "all" && !c.stagePreference.includes(filterStage) && !c.stagePreference.includes("Open to anything")) return false;
+      if (search) {
+        const s = search.toLowerCase();
+        return (c.firstName + " " + c.lastName + " " + c.currentRole + " " + c.skills.join(" ") + " " + c.location).toLowerCase().includes(s);
+      }
+      return true;
+    });
+  }, [candidates, filterRole, filterArch, filterStage, search]);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 className="font-display text-3xl">Browse the database</h2>
+          <p className="text-sm text-stone-500 mt-1">{candidates.length} vetted candidates currently live. Filter, sort, or jump straight to a profile.</p>
+        </div>
+      </div>
+      <Card className="!p-3">
+        <div className="grid sm:grid-cols-4 gap-2">
+          <Input placeholder="Search name, role, skill..." value={search} onChange={e => setSearch(e.target.value)} />
+          <Select value={filterRole} onChange={setFilterRole}
+            options={[{ value: "all", label: "All roles" }, ...ROLE_TYPES.map(r => ({ value: r, label: r }))]} />
+          <Select value={filterArch} onChange={setFilterArch}
+            options={[{ value: "all", label: "All archetypes" }, ...Object.keys(ARCHETYPES).map(k => ({ value: k, label: `${ARCHETYPES[k].icon} ${k}` }))]} />
+          <Select value={filterStage} onChange={setFilterStage}
+            options={[{ value: "all", label: "All stages" }, ...STAGE_OPTIONS.slice(0, 4).map(s => ({ value: s, label: s }))]} />
+        </div>
+      </Card>
+      <div className="text-xs text-stone-500">{filtered.length} of {candidates.length} candidates</div>
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {filtered.slice(0, 60).map(c => (
+          <Card key={c.id} onClick={() => onOpenProfile(c.id)} className="hover:border-amber-400">
+            <div className="flex items-center gap-3">
+              <Avatar candidate={c} size={44} />
+              <div className="min-w-0 flex-1">
+                <div className="font-bold text-sm truncate">{c.firstName} {c.lastName}</div>
+                <div className="text-xs text-stone-500 truncate">{c.currentRole}</div>
+              </div>
+              {c.archetype && <ArchetypeBadge quad={c.archetype} />}
+            </div>
+            <div className="flex flex-wrap items-center gap-2 mt-2 text-[10px] text-stone-500">
+              <span><Clock size={10} className="inline mr-0.5" /> {c.yearsExperience} yrs</span>
+              <span><MapPin size={10} className="inline mr-0.5" /> {c.location}</span>
+            </div>
+            <div className="flex flex-wrap gap-1 mt-2">{c.skills.slice(0, 4).map(s => <Tag key={s}>{s}</Tag>)}</div>
+          </Card>
+        ))}
+      </div>
+      {filtered.length > 60 && (
+        <div className="text-center text-xs text-stone-500 py-3">Showing first 60. Refine filters or use the AI search to narrow down further.</div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================
+// TALENT: OPEN JOBS BOARD — approved talent browses companies + jobs and applies
+// ============================================================
+function TalentJobBoard({ onExit }) {
+  const [search, setSearch] = useState("");
+  const [filterRole, setFilterRole] = useState("all");
+  const [filterStage, setFilterStage] = useState("all");
+  const [activeJob, setActiveJob] = useState(null);
+  const [applications, setApplications] = useState([]); // session-only
+
+  const openJobs = JOBS.filter(j => j.status === 'open');
+
+  const filtered = openJobs.filter(j => {
+    if (filterRole !== "all" && j.role !== filterRole) return false;
+    if (filterStage !== "all" && j.stage !== filterStage) return false;
+    if (search) {
+      const s = search.toLowerCase();
+      const company = DATA_BUNDLE.companies.find(c => c.id === j.companyId);
+      return (j.title + " " + j.summary + " " + j.skills.join(" ") + " " + (company?.name || "") + " " + (company?.industry || "")).toLowerCase().includes(s);
+    }
+    return true;
+  });
+
+  function apply(jobId) {
+    setApplications(arr => [...arr, { jobId, ts: Date.now() }]);
+    setActiveJob(null);
+    alert("Application sent. Zap will personally introduce you if it's a fit.");
+  }
+
+  return (
+    <div className="min-h-screen bg-white text-black">
+      <div className="border-b border-stone-200 bg-white/95 backdrop-blur sticky top-0 z-30">
+        <div className="max-w-5xl mx-auto px-6 py-3 flex items-center justify-between">
+          <button onClick={onExit} className="flex items-center gap-2 hover:text-amber-600">
+            <Zap className="text-amber-500 fill-amber-500" size={18} />
+            <span className="font-black tracking-tight">Lighthouse</span>
+            <span className="text-stone-500 text-xs">Talent · Job Board</span>
+          </button>
+          <Button size="sm" variant="ghost" icon={ArrowLeft} onClick={onExit}>Back to apply</Button>
+        </div>
+      </div>
+      <div className="max-w-5xl mx-auto px-6 py-8">
+        <div className="space-y-6">
+          <div>
+            <Tag color="yellow"><Sparkles size={10} /> APPROVED TALENT VIEW</Tag>
+            <h1 className="font-display text-5xl md:text-6xl mt-3">Who's hiring on Lighthouse</h1>
+            <p className="text-stone-500 text-lg mt-3 max-w-2xl">
+              Every company here has signed a placement agreement with Zap. See open roles, apply directly, and we'll personally make the warm intro.
+            </p>
+          </div>
+          <Card className="!p-3">
+            <div className="grid sm:grid-cols-3 gap-2">
+              <Input placeholder="Search by company, role, skill..." value={search} onChange={e => setSearch(e.target.value)} />
+              <Select value={filterRole} onChange={setFilterRole}
+                options={[{ value: "all", label: "All roles" }, ...ROLE_TYPES.map(r => ({ value: r, label: r }))]} />
+              <Select value={filterStage} onChange={setFilterStage}
+                options={[{ value: "all", label: "All stages" }, ...STAGE_OPTIONS.slice(0, 4).map(s => ({ value: s, label: s }))]} />
+            </div>
+          </Card>
+          <div className="text-xs text-stone-500">{filtered.length} open roles across {DATA_BUNDLE.companies.length} companies</div>
+          <div className="space-y-3">
+            {filtered.map(j => {
+              const company = DATA_BUNDLE.companies.find(c => c.id === j.companyId);
+              const applied = applications.some(a => a.jobId === j.id);
+              return (
+                <JobCard
+                  key={j.id} job={j} company={company}
+                  alreadyApplied={applied} applicationStatus={applied ? "applied" : null}
+                  onApply={() => apply(j.id)}
+                  onView={() => setActiveJob(j)}
+                />
+              );
+            })}
+          </div>
+          {activeJob && (
+            <div className="fixed inset-0 z-40 bg-black/50 flex items-center justify-center p-4" onClick={() => setActiveJob(null)}>
+              <div onClick={e => e.stopPropagation()} className="bg-white rounded-2xl p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="font-display text-2xl">{activeJob.title}</div>
+                    <div className="text-sm text-stone-500 mt-0.5">
+                      {DATA_BUNDLE.companies.find(c => c.id === activeJob.companyId)?.name} · {activeJob.stage}
+                    </div>
+                  </div>
+                  <button onClick={() => setActiveJob(null)} className="text-stone-500 hover:text-black"><X size={18} /></button>
+                </div>
+                <div className="mt-4 space-y-3 text-sm">
+                  <div className="flex flex-wrap gap-3 text-xs text-stone-500">
+                    <span><MapPin size={11} className="inline mr-0.5" /> {activeJob.location}</span>
+                    <span><Briefcase size={11} className="inline mr-0.5" /> {activeJob.workMode}</span>
+                    <span><DollarSign size={11} className="inline" />{activeJob.salaryMin}–{activeJob.salaryMax}K{activeJob.equity ? ` · ${activeJob.equity}` : ""}</span>
+                  </div>
+                  <p>{activeJob.summary}</p>
+                  <div>
+                    <div className="text-xs uppercase tracking-wider font-bold text-stone-500 mt-3 mb-1">What we're looking for</div>
+                    <div className="flex flex-wrap gap-1">{activeJob.skills.map(s => <Tag key={s}>{s}</Tag>)}</div>
+                  </div>
+                </div>
+                <div className="flex gap-2 mt-5 pt-4 border-t border-stone-200">
+                  {applications.some(a => a.jobId === activeJob.id)
+                    ? <Tag color="green">Applied — Zap will be in touch</Tag>
+                    : <Button icon={Send} onClick={() => apply(activeJob.id)}>Apply for this role</Button>}
+                  <Button variant="ghost" onClick={() => setActiveJob(null)}>Close</Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// ADMIN: JOB BOARD — all jobs and applications across companies
+// ============================================================
+const APP_STATUS_META = {
+  applied: { label: "Applied", color: "blue" },
+  review: { label: "In review", color: "yellow" },
+  advanced: { label: "Advanced", color: "purple" },
+  declined: { label: "Passed", color: "default" },
+  hired: { label: "Hired", color: "green" },
+};
+
+function AdminJobBoard({ onOpenCandidate }) {
+  const [activeTab, setActiveTab] = useState("jobs"); // jobs | applications
+  const [filterCompany, setFilterCompany] = useState("all");
+  const [filterRole, setFilterRole] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [openJob, setOpenJob] = useState(null);
+
+  const jobs = JOBS;
+  const applications = APPLICATIONS;
+
+  const counts = applications.reduce((a, x) => { a[x.status] = (a[x.status] || 0) + 1; return a; }, {});
+
+  const filteredJobs = jobs.filter(j => {
+    if (filterCompany !== "all" && j.companyId !== +filterCompany) return false;
+    if (filterRole !== "all" && j.role !== filterRole) return false;
+    if (filterStatus !== "all" && j.status !== filterStatus) return false;
+    return true;
+  });
+
+  const filteredApps = applications.filter(a => {
+    const j = jobs.find(j => j.id === a.jobId);
+    if (!j) return false;
+    if (filterCompany !== "all" && j.companyId !== +filterCompany) return false;
+    if (filterRole !== "all" && j.role !== filterRole) return false;
+    if (filterStatus !== "all" && a.status !== filterStatus) return false;
+    return true;
+  });
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h2 className="font-display text-3xl">Job Board</h2>
+        <div className="text-xs text-stone-500 mt-1">{jobs.length} jobs across {new Set(jobs.map(j => j.companyId)).size} companies · {applications.length} applications</div>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex items-center gap-1 border-b border-stone-200">
+        {[
+          { k: "jobs", l: `Jobs (${jobs.length})`, icon: Briefcase },
+          { k: "applications", l: `Applications (${applications.length})`, icon: FileText },
+        ].map(t => (
+          <button key={t.k} onClick={() => setActiveTab(t.k)}
+            className={`px-4 py-2.5 text-sm font-semibold flex items-center gap-2 border-b-2 -mb-px ${activeTab === t.k ? "border-amber-500 text-black" : "border-transparent text-stone-500 hover:text-black"}`}>
+            <t.icon size={14} /> {t.l}
+          </button>
+        ))}
+      </div>
+
+      {/* Filters */}
+      <Card className="!p-3">
+        <div className="grid sm:grid-cols-3 gap-2">
+          <Select value={filterCompany} onChange={setFilterCompany}
+            options={[{ value: "all", label: "All companies" }, ...DATA_BUNDLE.companies.map(c => ({ value: c.id, label: c.name }))]} />
+          <Select value={filterRole} onChange={setFilterRole}
+            options={[{ value: "all", label: "All roles" }, ...ROLE_TYPES.map(r => ({ value: r, label: r }))]} />
+          <Select value={filterStatus} onChange={setFilterStatus}
+            options={activeTab === "jobs"
+              ? [{ value: "all", label: "All statuses" }, { value: "open", label: "Open" }, { value: "paused", label: "Paused" }, { value: "filled", label: "Filled" }]
+              : [{ value: "all", label: `All statuses` }, ...Object.entries(APP_STATUS_META).map(([k, m]) => ({ value: k, label: `${m.label} (${counts[k] || 0})` }))]} />
+        </div>
+      </Card>
+
+      {activeTab === "jobs" && (
+        <div className="space-y-3">
+          {filteredJobs.map(j => {
+            const company = DATA_BUNDLE.companies.find(c => c.id === j.companyId);
+            const apps = applications.filter(a => a.jobId === j.id);
+            return (
+              <JobCard key={j.id} job={j} company={company} applicationCount={apps.length}
+                onView={() => setOpenJob(j)} />
+            );
+          })}
+          {filteredJobs.length === 0 && <Card className="text-center py-8 text-sm text-stone-500">No jobs match these filters.</Card>}
+        </div>
+      )}
+
+      {activeTab === "applications" && (
+        <Card padded={false}>
+          <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-stone-50 border-b border-stone-200 text-[10px] uppercase tracking-wider text-stone-500">
+              <tr>
+                <th className="text-left p-3">Candidate</th>
+                <th className="text-left p-3">Role</th>
+                <th className="text-left p-3">Company</th>
+                <th className="text-left p-3">Applied</th>
+                <th className="text-left p-3">Status</th>
+                <th className="text-left p-3">Archetype</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredApps.slice(0, 100).map(a => {
+                const c = DATA_BUNDLE.candidates.find(x => x.id === a.candidateId);
+                const j = jobs.find(x => x.id === a.jobId);
+                const company = DATA_BUNDLE.companies.find(x => x.id === j?.companyId);
+                if (!c || !j) return null;
+                return (
+                  <tr key={a.id} className="border-b border-stone-200 hover:bg-stone-50 cursor-pointer" onClick={() => onOpenCandidate(c.id)}>
+                    <td className="p-3">
+                      <div className="flex items-center gap-2">
+                        <Avatar candidate={c} size={28} />
+                        <div className="font-bold">{c.firstName} {c.lastName}</div>
+                      </div>
+                    </td>
+                    <td className="p-3 text-stone-700 max-w-xs truncate">{j.title}</td>
+                    <td className="p-3 text-stone-700">{company?.name}</td>
+                    <td className="p-3 text-xs text-stone-500">{a.appliedAt}</td>
+                    <td className="p-3"><Tag color={APP_STATUS_META[a.status]?.color}>{APP_STATUS_META[a.status]?.label}</Tag></td>
+                    <td className="p-3">{c.archetype ? <ArchetypeBadge quad={c.archetype} /> : <span className="text-stone-400">—</span>}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          </div>
+          {filteredApps.length > 100 && <div className="p-3 text-center text-xs text-stone-500">Showing 100 of {filteredApps.length} applications.</div>}
+        </Card>
+      )}
+
+      {/* Job detail modal */}
+      {openJob && (
+        <div className="fixed inset-0 z-40 bg-black/50 flex items-center justify-center p-4" onClick={() => setOpenJob(null)}>
+          <div onClick={e => e.stopPropagation()} className="bg-white rounded-2xl p-6 max-w-3xl w-full max-h-[85vh] overflow-y-auto">
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <div>
+                <div className="font-display text-2xl">{openJob.title}</div>
+                <div className="text-sm text-stone-500">{DATA_BUNDLE.companies.find(c => c.id === openJob.companyId)?.name} · {openJob.stage}</div>
+              </div>
+              <button onClick={() => setOpenJob(null)} className="text-stone-500 hover:text-black"><X size={18} /></button>
+            </div>
+            <p className="text-sm text-stone-700 mb-3">{openJob.summary}</p>
+            <div className="flex flex-wrap gap-1 mb-4">{openJob.skills.map(s => <Tag key={s}>{s}</Tag>)}</div>
+            <div className="text-xs uppercase tracking-wider font-bold text-stone-500 mt-2 mb-2">Applicants ({applications.filter(a => a.jobId === openJob.id).length})</div>
+            <div className="space-y-2">
+              {applications.filter(a => a.jobId === openJob.id).map(a => {
+                const c = DATA_BUNDLE.candidates.find(x => x.id === a.candidateId);
+                if (!c) return null;
+                return (
+                  <div key={a.id} className="flex items-center gap-3 p-2 border border-stone-200 rounded-lg cursor-pointer hover:border-amber-400" onClick={() => { setOpenJob(null); onOpenCandidate(c.id); }}>
+                    <Avatar candidate={c} size={32} />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-bold text-sm">{c.firstName} {c.lastName}</div>
+                      <div className="text-xs text-stone-500 truncate">{c.currentRole}</div>
+                    </div>
+                    <Tag color={APP_STATUS_META[a.status]?.color}>{APP_STATUS_META[a.status]?.label}</Tag>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
