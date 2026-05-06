@@ -663,9 +663,6 @@ const SAMPLE_LINKEDIN_PROFILES = [
 function CandidateIntakeFlow({ onExit }) {
   const [step, setStep] = useState(0);
   const [showJobBoard, setShowJobBoard] = useState(false);
-  if (showJobBoard) {
-    return <TalentJobBoard onExit={() => setShowJobBoard(false)} />;
-  }
   const [profile, setProfile] = useState({
     firstName: "", lastName: "", email: "", phone: "", linkedin: "",
     currentRole: "", currentCompany: "", yearsExperience: 5, location: "",
@@ -676,6 +673,10 @@ function CandidateIntakeFlow({ onExit }) {
     vibe: { nerdAbout: "", managerWords: "", futureSelfJoke: "", karaoke: "" },
     archetypeScores: null, archetype: null, archetypeXY: null, hasAssessment: false,
   });
+  // Early return AFTER all hooks are called (rules of hooks)
+  if (showJobBoard) {
+    return <TalentJobBoard onExit={() => setShowJobBoard(false)} />;
+  }
   function next() { setStep(s => Math.min(CANDIDATE_STEPS.length - 1, s + 1)); }
   function back() { setStep(s => Math.max(0, s - 1)); }
   function update(patch) { setProfile(p => ({ ...p, ...patch })); }
