@@ -338,8 +338,8 @@ function explainMatch(candidate, interp) {
 // AVATAR — deterministic colored initials
 // ============================================================
 const AVATAR_COLORS = [
-  ["#FFD60A", "#0A1628"], ["#FF8E3C", "#fff"], ["#7DD3FC", "#0A1628"], ["#A78BFA", "#fff"],
-  ["#FCA5A5", "#0A1628"], ["#86EFAC", "#0A1628"], ["#FCD34D", "#0A1628"], ["#F472B6", "#fff"],
+  ["#FACC15", "#0A0A0A"], ["#FB923C", "#0A0A0A"], ["#38BDF8", "#0A0A0A"], ["#A78BFA", "#fff"],
+  ["#F87171", "#fff"], ["#34D399", "#0A0A0A"], ["#FBBF24", "#0A0A0A"], ["#F472B6", "#fff"],
 ];
 function Avatar({ candidate, size = 40 }) {
   const initials = ((candidate.firstName?.[0] || "") + (candidate.lastName?.[0] || "")).toUpperCase();
@@ -357,14 +357,14 @@ function Avatar({ candidate, size = 40 }) {
 // ============================================================
 function Tag({ children, color = "default", size = "sm" }) {
   const palette = {
-    default: "bg-slate-700/60 text-slate-200 border-slate-600",
-    yellow: "bg-yellow-400/15 text-yellow-300 border-yellow-400/40",
-    blue: "bg-sky-400/15 text-sky-300 border-sky-400/40",
-    purple: "bg-violet-400/15 text-violet-300 border-violet-400/40",
-    green: "bg-emerald-400/15 text-emerald-300 border-emerald-400/40",
-    red: "bg-rose-400/15 text-rose-300 border-rose-400/40",
-    orange: "bg-orange-400/15 text-orange-300 border-orange-400/40",
-    light: "bg-slate-800 text-slate-300 border-slate-700",
+    default: "bg-stone-100 border border-stone-200 text-stone-900 border-stone-400",
+    yellow: "bg-yellow-100 text-amber-800 border-yellow-300",
+    blue: "bg-sky-100 text-sky-800 border-sky-300",
+    purple: "bg-violet-100 text-violet-800 border-violet-300",
+    green: "bg-emerald-100 text-emerald-800 border-emerald-300",
+    red: "bg-rose-100 text-rose-800 border-rose-300",
+    orange: "bg-orange-100 text-orange-800 border-orange-300",
+    light: "bg-stone-100 text-stone-700 border-stone-300",
   };
   const sz = size === "lg" ? "px-3 py-1 text-sm" : "px-2 py-0.5 text-xs";
   return <span className={`inline-flex items-center gap-1 rounded-full border ${palette[color] || palette.default} ${sz} font-medium whitespace-nowrap`}>{children}</span>;
@@ -373,12 +373,12 @@ function Tag({ children, color = "default", size = "sm" }) {
 function Button({ children, onClick, variant = "primary", size = "md", disabled, className = "", icon: Icon, type = "button" }) {
   const sizes = { sm: "px-3 py-1.5 text-sm", md: "px-5 py-2.5 text-sm", lg: "px-6 py-3.5 text-base" };
   const variants = {
-    primary: "bg-yellow-400 text-slate-900 hover:bg-yellow-300 font-bold",
-    secondary: "bg-slate-800 text-slate-100 hover:bg-slate-700 border border-slate-700 font-semibold",
-    ghost: "bg-transparent text-slate-300 hover:bg-slate-800/50 font-semibold",
-    outline: "bg-transparent text-slate-100 border border-slate-600 hover:bg-slate-800 font-semibold",
+    primary: "bg-yellow-400 text-black hover:bg-yellow-300 font-bold",
+    secondary: "bg-stone-100 text-black hover:bg-stone-200 border border-stone-300 font-semibold",
+    ghost: "bg-transparent text-stone-700 hover:bg-stone-100 font-semibold",
+    outline: "bg-transparent text-black border border-stone-400 hover:bg-stone-100 font-semibold",
     danger: "bg-rose-600 text-white hover:bg-rose-500 font-semibold",
-    skip: "bg-slate-800 text-slate-100 hover:bg-slate-700 border border-slate-600 font-semibold",
+    skip: "bg-stone-100 text-black hover:bg-stone-200 border border-stone-400 font-semibold",
   };
   return (
     <button type={type} onClick={onClick} disabled={disabled}
@@ -392,7 +392,7 @@ function Button({ children, onClick, variant = "primary", size = "md", disabled,
 function Card({ children, className = "", padded = true, onClick }) {
   return (
     <div onClick={onClick}
-         className={`bg-slate-900/70 border border-slate-800 rounded-xl ${padded ? "p-5" : ""} ${onClick ? "cursor-pointer hover:border-slate-700 transition" : ""} ${className}`}>
+         className={`bg-white border border-stone-200 rounded-xl ${padded ? "p-5" : ""} ${onClick ? "cursor-pointer hover:border-stone-400 transition" : ""} ${className}`}>
       {children}
     </div>
   );
@@ -401,7 +401,7 @@ function Card({ children, className = "", padded = true, onClick }) {
 function ProgressBar({ value, max = 100, color = "bg-yellow-400" }) {
   const pct = Math.max(0, Math.min(100, (value / max) * 100));
   return (
-    <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+    <div className="w-full h-1.5 bg-stone-100 rounded-full overflow-hidden">
       <div className={`h-full ${color} transition-all duration-500`} style={{ width: `${pct}%` }} />
     </div>
   );
@@ -411,7 +411,7 @@ function StepIndicator({ current, steps }) {
   return (
     <div className="flex items-center gap-1 mb-1">
       {steps.map((s, i) => (
-        <div key={i} className={`h-1.5 flex-1 rounded-full ${i < current ? "bg-yellow-400" : i === current ? "bg-yellow-400/60" : "bg-slate-800"}`} />
+        <div key={i} className={`h-1.5 flex-1 rounded-full ${i < current ? "bg-yellow-400" : i === current ? "bg-yellow-400/60" : "bg-stone-100"}`} />
       ))}
     </div>
   );
@@ -421,15 +421,15 @@ function Slider({ value, onChange, min = 0, max = 10, step = 1 }) {
   return (
     <div className="space-y-2">
       <div className="text-center">
-        <div className="text-7xl font-black text-yellow-400 tabular-nums">{value}</div>
-        <div className="text-xs text-slate-500 mt-1">
+        <div className="text-7xl font-black text-amber-500 tabular-nums">{value}</div>
+        <div className="text-xs text-stone-500 mt-1">
           {value === 0 ? "Strongly Disagree" : value === 5 ? "Neutral" : value === 10 ? "Strongly Agree" : value < 5 ? "Disagree" : "Agree"}
         </div>
       </div>
       <input type="range" min={min} max={max} step={step} value={value}
         onChange={e => onChange(+e.target.value)}
         className="w-full accent-yellow-400 cursor-pointer h-2" />
-      <div className="flex justify-between text-[10px] text-slate-600 px-1">
+      <div className="flex justify-between text-[10px] text-stone-400 px-1">
         <span>0</span><span>2</span><span>4</span><span>5</span><span>6</span><span>8</span><span>10</span>
       </div>
     </div>
@@ -439,29 +439,29 @@ function Slider({ value, onChange, min = 0, max = 10, step = 1 }) {
 function Field({ label, required, children, hint }) {
   return (
     <div>
-      <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
-        {label} {required && <span className="text-yellow-400">*</span>}
+      <label className="block text-xs font-semibold text-stone-700 uppercase tracking-wider mb-1.5">
+        {label} {required && <span className="text-amber-500">*</span>}
       </label>
       {children}
-      {hint && <div className="text-xs text-slate-500 mt-1">{hint}</div>}
+      {hint && <div className="text-xs text-stone-500 mt-1">{hint}</div>}
     </div>
   );
 }
 
 function Input(props) {
   return <input {...props}
-    className={`w-full bg-slate-900/80 border border-slate-700 rounded-lg px-3.5 py-2.5 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-yellow-400/60 ${props.className || ""}`} />;
+    className={`w-full bg-white border border-stone-300 rounded-lg px-3.5 py-2.5 text-sm text-black placeholder:text-stone-400 focus:outline-none focus:border-black ${props.className || ""}`} />;
 }
 
 function Textarea(props) {
   return <textarea {...props}
-    className={`w-full bg-slate-900/80 border border-slate-700 rounded-lg px-3.5 py-2.5 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-yellow-400/60 resize-y ${props.className || ""}`} />;
+    className={`w-full bg-white border border-stone-300 rounded-lg px-3.5 py-2.5 text-sm text-black placeholder:text-stone-400 focus:outline-none focus:border-black resize-y ${props.className || ""}`} />;
 }
 
 function Select({ value, onChange, options, className = "" }) {
   return (
     <select value={value} onChange={e => onChange(e.target.value)}
-      className={`w-full bg-slate-900/80 border border-slate-700 rounded-lg px-3.5 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-yellow-400/60 ${className}`}>
+      className={`w-full bg-white border border-stone-300 rounded-lg px-3.5 py-2.5 text-sm text-black focus:outline-none focus:border-black ${className}`}>
       {options.map(o => <option key={typeof o === "string" ? o : o.value} value={typeof o === "string" ? o : o.value}>{typeof o === "string" ? o : o.label}</option>)}
     </select>
   );
@@ -477,8 +477,8 @@ function MultiSelectChips({ options, selected, onChange }) {
       {options.map(o => (
         <button key={o} onClick={() => toggle(o)} type="button"
           className={`px-3 py-1.5 text-xs rounded-full border transition ${selected.includes(o)
-            ? "bg-yellow-400 border-yellow-400 text-slate-900 font-bold"
-            : "bg-slate-900 border-slate-700 text-slate-300 hover:border-slate-500"}`}>
+            ? "bg-yellow-400 border-yellow-400 text-black font-bold"
+            : "bg-white border border-stone-300 text-stone-700 hover:border-stone-400"}`}>
           {o}
         </button>
       ))}
@@ -489,10 +489,10 @@ function MultiSelectChips({ options, selected, onChange }) {
 function RangeSlider({ min, max, value, onChange, step = 1, format = (v) => v }) {
   return (
     <div className="space-y-2">
-      <div className="flex justify-between text-xs text-slate-400">
+      <div className="flex justify-between text-xs text-stone-500">
         <span>{format(value[0])}</span><span>{format(value[1])}</span>
       </div>
-      <div className="relative h-1.5 bg-slate-800 rounded-full">
+      <div className="relative h-1.5 bg-stone-100 rounded-full">
         <div className="absolute h-full bg-yellow-400 rounded-full"
              style={{ left: `${((value[0] - min) / (max - min)) * 100}%`, right: `${100 - ((value[1] - min) / (max - min)) * 100}%` }} />
       </div>
@@ -541,10 +541,10 @@ function ArchetypePlot({ candidates, highlight, height = 320, showHeatmap = true
     <div className="relative" style={{ height }}>
       {/* Quadrant labels overlay */}
       <div className="absolute inset-0 pointer-events-none z-10 grid grid-cols-2 grid-rows-2 text-[10px] font-bold tracking-wider uppercase">
-        <div className="flex items-start justify-start p-2 text-yellow-400/90">{"⚡ Pioneer"}</div>
-        <div className="flex items-start justify-end p-2 text-orange-400/90">{"🚀 Founder"}</div>
-        <div className="flex items-end justify-start p-2 text-sky-400/90">{"🔬 Craftsperson"}</div>
-        <div className="flex items-end justify-end p-2 text-violet-400/90">{"🎯 Athlete"}</div>
+        <div className="flex items-start justify-start p-2 text-amber-500/90">{"⚡ Pioneer"}</div>
+        <div className="flex items-start justify-end p-2 text-orange-600">{"🚀 Founder"}</div>
+        <div className="flex items-end justify-start p-2 text-sky-700/90">{"🔬 Craftsperson"}</div>
+        <div className="flex items-end justify-end p-2 text-violet-700">{"🎯 Athlete"}</div>
       </div>
       <ResponsiveContainer width="100%" height="100%">
         <ScatterChart margin={{ top: 16, right: 16, bottom: 24, left: 24 }}>
@@ -558,9 +558,9 @@ function ArchetypePlot({ candidates, highlight, height = 320, showHeatmap = true
           <RTooltip cursor={false} content={({ active, payload }) => {
             if (!active || !payload || !payload.length) return null;
             const p = payload[0].payload;
-            return <div className="bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs shadow-xl">
-              <div className="font-bold text-slate-100">{p.name}</div>
-              {p.archetype && <div className="text-slate-400 mt-0.5">{ARCHETYPES[p.archetype]?.icon} {p.archetype}</div>}
+            return <div className="bg-white border border-stone-300 rounded-lg p-2 text-xs shadow-xl">
+              <div className="font-bold text-black">{p.name}</div>
+              {p.archetype && <div className="text-stone-500 mt-0.5">{ARCHETYPES[p.archetype]?.icon} {p.archetype}</div>}
             </div>;
           }} />
           <Scatter data={points} fill="#475569">
@@ -585,24 +585,24 @@ function LandingPage({ onPick }) {
   return (
     <div className="min-h-screen flex items-center justify-center p-8 relative overflow-hidden">
       {/* Bg ambient */}
-      <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950" />
-      <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-yellow-500/10 blur-3xl" />
-      <div className="absolute -bottom-32 -right-32 w-96 h-96 rounded-full bg-violet-500/10 blur-3xl" />
+      <div className="absolute inset-0 bg-white" />
+      <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-yellow-100/60 blur-3xl" />
+      <div className="absolute -bottom-32 -right-32 w-96 h-96 rounded-full bg-amber-50 blur-3xl" />
 
       <div className="relative z-10 max-w-5xl w-full">
         <div className="text-center mb-12">
           <div className="inline-flex items-center gap-2 mb-4">
-            <Zap className="text-yellow-400 fill-yellow-400" size={36} />
-            <div className="text-3xl font-black tracking-tight">Lighthouse</div>
-            <span className="text-slate-500 text-sm">Talent</span>
+            <Zap className="text-amber-500 fill-yellow-400" size={36} />
+            <div className="text-3xl font-black tracking-tight font-display">Lighthouse</div>
+            <span className="text-stone-500 text-sm">Talent</span>
           </div>
-          <h1 className="text-5xl md:text-6xl font-black tracking-tight leading-[1.05] mb-4">
-            A curated network of <span className="text-yellow-400">startup talent</span> for Nashville's best companies.
+          <h1 className="text-5xl md:text-6xl font-black tracking-tight leading-[1.05] mb-4 font-display">
+            A curated network of <span className="text-amber-500">startup talent</span> for Nashville's best companies.
           </h1>
-          <p className="text-slate-400 text-lg max-w-2xl mx-auto">
+          <p className="text-stone-500 text-lg max-w-2xl mx-auto">
             Vetted by Zap. Searched in plain English. Hired without the noise.
           </p>
-          <div className="text-slate-500 text-xs mt-3">Prototype · Pick a side to explore.</div>
+          <div className="text-stone-500 text-xs mt-3">Prototype · Pick a side to explore.</div>
         </div>
         <div className="grid md:grid-cols-3 gap-4">
           {[
@@ -611,12 +611,12 @@ function LandingPage({ onPick }) {
             { key: "admin", label: "Admin (Zap)", desc: "Manage the database, vetting, & insights.", icon: Shield, hint: "Internal tool" },
           ].map(opt => (
             <button key={opt.key} onClick={() => onPick(opt.key)}
-                    className="group bg-slate-900/70 border border-slate-800 rounded-2xl p-6 text-left hover:border-yellow-400/40 hover:bg-slate-900 transition-all">
-              <opt.icon size={28} className="text-yellow-400 mb-3" />
-              <div className="text-xl font-bold text-slate-100 mb-1">{opt.label}</div>
-              <div className="text-sm text-slate-400 mb-3">{opt.desc}</div>
-              <div className="text-xs text-slate-600">{opt.hint}</div>
-              <div className="mt-4 inline-flex items-center gap-1 text-yellow-400 text-sm font-bold group-hover:gap-2 transition-all">
+                    className="group bg-white border border-stone-200 rounded-2xl p-6 text-left hover:border-yellow-300 hover:bg-stone-50 transition-all">
+              <opt.icon size={28} className="text-amber-500 mb-3" />
+              <div className="text-xl font-bold text-black mb-1">{opt.label}</div>
+              <div className="text-sm text-stone-500 mb-3">{opt.desc}</div>
+              <div className="text-xs text-stone-400">{opt.hint}</div>
+              <div className="mt-4 inline-flex items-center gap-1 text-amber-500 text-sm font-bold group-hover:gap-2 transition-all">
                 Enter <ChevronRight size={16} />
               </div>
             </button>
@@ -680,15 +680,15 @@ function CandidateIntakeFlow({ onExit }) {
   const showProgress = step > 0 && step < CANDIDATE_STEPS.length - 1;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
-      <div className="border-b border-slate-800 bg-slate-950/80 backdrop-blur sticky top-0 z-30">
+    <div className="min-h-screen bg-white text-black">
+      <div className="border-b border-stone-200 bg-white/90 backdrop-blur sticky top-0 z-30">
         <div className="max-w-3xl mx-auto px-6 py-3 flex items-center justify-between">
-          <button onClick={onExit} className="flex items-center gap-2 text-slate-400 hover:text-yellow-400">
-            <Zap className="text-yellow-400 fill-yellow-400" size={18} />
-            <span className="font-black tracking-tight text-slate-100">Lighthouse</span>
-            <span className="text-slate-500 text-xs">Talent</span>
+          <button onClick={onExit} className="flex items-center gap-2 text-stone-500 hover:text-amber-500">
+            <Zap className="text-amber-500 fill-yellow-400" size={18} />
+            <span className="font-black tracking-tight text-black">Lighthouse</span>
+            <span className="text-stone-500 text-xs">Talent</span>
           </button>
-          {showProgress && <div className="text-xs text-slate-500 tabular-nums">Step {step}/{5}</div>}
+          {showProgress && <div className="text-xs text-stone-500 tabular-nums">Step {step}/{5}</div>}
         </div>
         {showProgress && (
           <div className="max-w-3xl mx-auto px-6 pb-3">
@@ -719,10 +719,10 @@ function CandidateLanding({ onStart }) {
   return (
     <div className="space-y-8">
       <div className="text-center mb-2">
-        <h1 className="text-5xl md:text-6xl font-black tracking-tight leading-[1.05]">
-          Get on <span className="text-yellow-400">Zap's list.</span>
+        <h1 className="text-5xl md:text-6xl font-black tracking-tight leading-[1.05] font-display">
+          Get on <span className="text-amber-500">Zap's list.</span>
         </h1>
-        <p className="text-slate-400 text-lg mt-4 max-w-2xl mx-auto">
+        <p className="text-stone-500 text-lg mt-4 max-w-2xl mx-auto">
           The Lighthouse Talent Network is a curated database of operators, builders, and creatives for Nashville's best startups. Every member is personally vetted by Zap.
         </p>
       </div>
@@ -732,16 +732,16 @@ function CandidateLanding({ onStart }) {
           { i: "02", t: "Answer a few questions", d: "Roles, ranges, and a quick vibe check." },
           { i: "03", t: "Submit", d: "Zap reviews every application personally." },
         ].map(s => (
-          <Card key={s.i} className="bg-slate-900/40">
-            <div className="text-yellow-400 font-bold text-xs tracking-widest">{s.i}</div>
+          <Card key={s.i} className="bg-stone-50 border border-stone-200">
+            <div className="text-amber-500 font-bold text-xs tracking-widest">{s.i}</div>
             <div className="text-xl font-bold mt-1">{s.t}</div>
-            <div className="text-sm text-slate-400 mt-1">{s.d}</div>
+            <div className="text-sm text-stone-500 mt-1">{s.d}</div>
           </Card>
         ))}
       </div>
-      <Card className="bg-slate-900/40">
-        <div className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-2">What happens next</div>
-        <div className="space-y-1.5 text-sm text-slate-300">
+      <Card className="bg-stone-50 border border-stone-200">
+        <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-2">What happens next</div>
+        <div className="space-y-1.5 text-sm text-stone-700">
           <div>1. Zap reviews your application within 5 business days.</div>
           <div>2. If approved, we'll set up coffee or a Zoom to get to know you in person.</div>
           <div>3. Once vetted, you're added to the live database for startups to find.</div>
@@ -750,7 +750,7 @@ function CandidateLanding({ onStart }) {
       </Card>
       <div className="text-center space-y-3 pt-4">
         <Button size="lg" icon={Zap} onClick={onStart}>Start your application</Button>
-        <div className="text-xs text-slate-500">
+        <div className="text-xs text-stone-500">
           Required: ~7 minutes. Optional 5-minute archetype dive available at the end.
         </div>
       </div>
@@ -784,7 +784,7 @@ function ConnectCareer({ profile, update, onNext, onBack }) {
       <div className="min-h-[60vh] flex flex-col items-center justify-center text-center">
         <div className="animate-spin h-12 w-12 border-4 border-yellow-400 border-t-transparent rounded-full mb-6" />
         <div className="text-xl font-bold">{mode === "loading-linkedin" ? "Connecting to LinkedIn..." : "Parsing your CV..."}</div>
-        <div className="text-sm text-slate-500 mt-1">This usually takes a few seconds.</div>
+        <div className="text-sm text-stone-500 mt-1">This usually takes a few seconds.</div>
       </div>
     );
   }
@@ -792,35 +792,35 @@ function ConnectCareer({ profile, update, onNext, onBack }) {
   return (
     <div className="space-y-6">
       <div>
-        <div className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-2">Step 1 of 5</div>
-        <h2 className="text-3xl font-black">Connect your career</h2>
-        <p className="text-slate-400 mt-1">We'll auto-fill your profile so you don't have to type it twice.</p>
+        <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-2">Step 1 of 5</div>
+        <h2 className="text-3xl font-black font-display">Connect your career</h2>
+        <p className="text-stone-500 mt-1">We'll auto-fill your profile so you don't have to type it twice.</p>
       </div>
       <div className="grid md:grid-cols-2 gap-3">
-        <Card className="hover:border-yellow-400/30 transition cursor-pointer" onClick={pickLinkedIn}>
-          <Linkedin size={28} className="text-sky-400 mb-3" />
+        <Card className="hover:border-yellow-300 transition cursor-pointer" onClick={pickLinkedIn}>
+          <Linkedin size={28} className="text-sky-700 mb-3" />
           <div className="text-lg font-bold">Import from LinkedIn</div>
-          <div className="text-sm text-slate-400 mt-1">Fastest. We pull your role, history, and skills automatically.</div>
-          <div className="mt-4 inline-flex items-center gap-1 text-yellow-400 text-sm font-bold">
+          <div className="text-sm text-stone-500 mt-1">Fastest. We pull your role, history, and skills automatically.</div>
+          <div className="mt-4 inline-flex items-center gap-1 text-amber-500 text-sm font-bold">
             Connect LinkedIn <ChevronRight size={16} />
           </div>
         </Card>
-        <Card className="hover:border-yellow-400/30 transition">
-          <Upload size={28} className="text-yellow-400 mb-3" />
+        <Card className="hover:border-yellow-300 transition">
+          <Upload size={28} className="text-amber-500 mb-3" />
           <div className="text-lg font-bold">Upload your CV</div>
-          <div className="text-sm text-slate-400 mt-1">PDF or DOCX. We'll parse it for you.</div>
-          <div className="mt-4 border-2 border-dashed border-slate-700 rounded-lg p-4 text-center">
+          <div className="text-sm text-stone-500 mt-1">PDF or DOCX. We'll parse it for you.</div>
+          <div className="mt-4 border-2 border-dashed border-stone-300 rounded-lg p-4 text-center">
             <input type="file" id="cv-upload" accept=".pdf,.docx" className="hidden"
                    onChange={e => e.target.files[0] && pickCV(e.target.files[0])} />
             <label htmlFor="cv-upload" className="cursor-pointer">
-              <div className="text-xs text-slate-500 mb-2">Drop a file here or</div>
+              <div className="text-xs text-stone-500 mb-2">Drop a file here or</div>
               <Button size="sm" variant="secondary" type="button" onClick={() => document.getElementById("cv-upload")?.click()}>Choose file</Button>
             </label>
           </div>
         </Card>
       </div>
       <div className="text-center pt-4">
-        <button onClick={pickManual} className="text-sm text-slate-400 hover:text-yellow-400 underline underline-offset-4">
+        <button onClick={pickManual} className="text-sm text-stone-500 hover:text-amber-500 underline underline-offset-4">
           I'd rather fill it in myself →
         </button>
       </div>
@@ -840,9 +840,9 @@ function ReviewProfile({ profile, update, onNext, onBack }) {
   return (
     <div className="space-y-6">
       <div>
-        <div className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-2">Step 1 · Review</div>
-        <h2 className="text-3xl font-black">Looks good?</h2>
-        <p className="text-slate-400 mt-1">We pulled the basics. Tweak anything that's off.</p>
+        <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-2">Step 1 · Review</div>
+        <h2 className="text-3xl font-black font-display">Looks good?</h2>
+        <p className="text-stone-500 mt-1">We pulled the basics. Tweak anything that's off.</p>
       </div>
       <div className="grid md:grid-cols-2 gap-4">
         <Field label="First name" required><Input value={profile.firstName} onChange={e => update({ firstName: e.target.value })} /></Field>
@@ -860,7 +860,7 @@ function ReviewProfile({ profile, update, onNext, onBack }) {
       <Field label="Top skills" hint="Edit, remove, or add. Aim for 5–9.">
         <div className="flex flex-wrap gap-2 mb-2">
           {skills.map(s => (
-            <span key={s} className="inline-flex items-center gap-1 bg-yellow-400/15 text-yellow-300 border border-yellow-400/40 px-2 py-1 rounded-full text-xs font-medium">
+            <span key={s} className="inline-flex items-center gap-1 bg-yellow-100 text-amber-800 border border-yellow-300 px-2 py-1 rounded-full text-xs font-medium">
               {s} <button onClick={() => removeSkill(s)} className="ml-1 opacity-70 hover:opacity-100"><X size={12} /></button>
             </span>
           ))}
@@ -875,10 +875,10 @@ function ReviewProfile({ profile, update, onNext, onBack }) {
         <Field label="Work history">
           <div className="space-y-2">
             {profile.workHistory.map((w, i) => (
-              <div key={i} className="bg-slate-900/60 border border-slate-800 rounded-lg p-3 text-sm flex items-center justify-between">
+              <div key={i} className="bg-stone-50 border border-stone-200 rounded-lg p-3 text-sm flex items-center justify-between">
                 <div>
-                  <div className="font-bold text-slate-200">{w.title}</div>
-                  <div className="text-slate-400 text-xs">{w.company} · {w.startYear}–{w.endYear}</div>
+                  <div className="font-bold text-stone-900">{w.title}</div>
+                  <div className="text-stone-500 text-xs">{w.company} · {w.startYear}–{w.endYear}</div>
                 </div>
               </div>
             ))}
@@ -889,9 +889,9 @@ function ReviewProfile({ profile, update, onNext, onBack }) {
         <Field label="Education">
           <div className="space-y-2">
             {profile.education.map((e, i) => (
-              <div key={i} className="bg-slate-900/60 border border-slate-800 rounded-lg p-3 text-sm">
-                <div className="font-bold text-slate-200">{e.school}</div>
-                <div className="text-slate-400 text-xs">{e.degree} · {e.year}</div>
+              <div key={i} className="bg-stone-50 border border-stone-200 rounded-lg p-3 text-sm">
+                <div className="font-bold text-stone-900">{e.school}</div>
+                <div className="text-stone-500 text-xs">{e.degree} · {e.year}</div>
               </div>
             ))}
           </div>
@@ -912,9 +912,9 @@ function BasicsForm({ profile, update, onNext, onBack }) {
   return (
     <div className="space-y-7">
       <div>
-        <div className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-2">Step 2 · The basics</div>
-        <h2 className="text-3xl font-black">Tell us what you want.</h2>
-        <p className="text-slate-400 mt-1">Short and direct. Not a soul-bearing exercise.</p>
+        <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-2">Step 2 · The basics</div>
+        <h2 className="text-3xl font-black font-display">Tell us what you want.</h2>
+        <p className="text-stone-500 mt-1">Short and direct. Not a soul-bearing exercise.</p>
       </div>
       <div className="grid md:grid-cols-2 gap-x-6 gap-y-5">
         <div className="space-y-5">
@@ -935,7 +935,7 @@ function BasicsForm({ profile, update, onNext, onBack }) {
               <RangeSlider min={50} max={300} value={[profile.salaryMin, profile.salaryMax]}
                 onChange={v => update({ salaryMin: v[0], salaryMax: v[1] })} format={v => `$${v}K`} />
             )}
-            <label className="flex items-center gap-2 text-sm text-slate-400 mt-2 cursor-pointer">
+            <label className="flex items-center gap-2 text-sm text-stone-500 mt-2 cursor-pointer">
               <input type="checkbox" checked={profile.salaryOptOut}
                 onChange={e => update({ salaryOptOut: e.target.checked })} className="accent-yellow-400" />
               Prefer to discuss
@@ -981,9 +981,9 @@ function VibeCheck({ profile, updateVibe, onNext, onBack }) {
   return (
     <div className="space-y-8 min-h-[60vh] flex flex-col">
       <div>
-        <div className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-2">Step 3 · Vibe check ({sub + 1}/4)</div>
-        <h2 className="text-3xl font-black">Quick warm-up.</h2>
-        <p className="text-slate-400 mt-1">No wrong answers.</p>
+        <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-2">Step 3 · Vibe check ({sub + 1}/4)</div>
+        <h2 className="text-3xl font-black font-display">Quick warm-up.</h2>
+        <p className="text-stone-500 mt-1">No wrong answers.</p>
       </div>
       <div className="flex-1 flex items-center">
         <div className="w-full">
@@ -1023,15 +1023,15 @@ function ArchetypeAssessment({ onSkip, onComplete, onBack }) {
         <div className="inline-block">
           <Tag color="yellow" size="lg"><Sparkles size={14} /> OPTIONAL</Tag>
         </div>
-        <h2 className="text-4xl md:text-5xl font-black">Want to go deeper?</h2>
-        <p className="text-slate-300 text-lg max-w-2xl">
+        <h2 className="text-4xl md:text-5xl font-black font-display">Want to go deeper?</h2>
+        <p className="text-stone-700 text-lg max-w-2xl">
           Spend 5 more minutes telling us how you actually like to work. We'll plot you on our talent map and assign you an archetype that helps startups understand at a glance whether you're the right kind of person for what they're building.
         </p>
         <div className="flex flex-col sm:flex-row gap-3 pt-2">
           <Button size="lg" icon={Zap} onClick={() => setStage("running")}>Yes, let's do it</Button>
           <Button size="lg" variant="skip" onClick={onSkip}>Skip for now</Button>
         </div>
-        <p className="text-sm text-slate-500">You can always come back and finish this later.</p>
+        <p className="text-sm text-stone-500">You can always come back and finish this later.</p>
       </div>
     );
   }
@@ -1040,7 +1040,7 @@ function ArchetypeAssessment({ onSkip, onComplete, onBack }) {
       <div className="min-h-[60vh] flex flex-col items-center justify-center text-center">
         <div className="animate-spin h-12 w-12 border-4 border-yellow-400 border-t-transparent rounded-full mb-6" />
         <div className="text-xl font-bold">Calculating your archetype...</div>
-        <div className="text-sm text-slate-500 mt-1">Plotting you on the talent map.</div>
+        <div className="text-sm text-stone-500 mt-1">Plotting you on the talent map.</div>
       </div>
     );
   }
@@ -1052,13 +1052,13 @@ function ArchetypeAssessment({ onSkip, onComplete, onBack }) {
       <div className="flex items-center justify-between">
         <div>
           <Tag color="yellow"><Sparkles size={12} /> ARCHETYPE DIVE</Tag>
-          <div className="text-xs text-slate-500 mt-2">Page {page + 1} of 4 · Statement {start + 1}–{start + 4} of 16</div>
+          <div className="text-xs text-stone-500 mt-2">Page {page + 1} of 4 · Statement {start + 1}–{start + 4} of 16</div>
         </div>
         <ProgressBar value={start + 4} max={16} />
       </div>
       <div className="space-y-8 pt-2">
         {pageStatements.map((origIdx, i) => (
-          <div key={origIdx} className="bg-slate-900/40 border border-slate-800 rounded-xl p-6">
+          <div key={origIdx} className="bg-stone-50 border border-stone-200 rounded-xl p-6">
             <div className="text-xl font-bold mb-5 text-center">{ARCHETYPE_STATEMENTS[origIdx]}</div>
             <Slider value={scores[origIdx]} onChange={v => setScore(start + i, v)} />
           </div>
@@ -1092,32 +1092,32 @@ function ArchetypeResult({ profile, onNext, onBack }) {
       <div className="text-center pt-2">
         <Tag color="yellow"><Sparkles size={12} /> YOUR ARCHETYPE</Tag>
         <div className="text-7xl mt-4">{a.icon}</div>
-        <h2 className="text-5xl font-black mt-2 tracking-tight">{a.label}</h2>
-        <div className="text-sm text-slate-400 mt-1">{a.short}</div>
-        <p className="text-slate-300 mt-4 max-w-xl mx-auto">{a.desc}</p>
+        <h2 className="text-5xl font-black mt-2 tracking-tight font-display">{a.label}</h2>
+        <div className="text-sm text-stone-500 mt-1">{a.short}</div>
+        <p className="text-stone-700 mt-4 max-w-xl mx-auto">{a.desc}</p>
       </div>
       <Card>
-        <div className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-3">Where you sit on the map</div>
+        <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-3">Where you sit on the map</div>
         <ArchetypePlot candidates={heatmap} highlight={profile} />
       </Card>
       <Card>
-        <div className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-3">Your scores breakdown</div>
+        <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-3">Your scores breakdown</div>
         <div className="space-y-3">
           <ScoreBar leftLabel="Builder" rightLabel="Operator" leftScore={builder} rightScore={operator} />
           <ScoreBar leftLabel="Specialist" rightLabel="Generalist" leftScore={spec} rightScore={gen} />
         </div>
       </Card>
       <Card>
-        <button onClick={() => setShowAll(!showAll)} className="w-full text-left flex items-center justify-between text-sm font-semibold text-slate-300">
+        <button onClick={() => setShowAll(!showAll)} className="w-full text-left flex items-center justify-between text-sm font-semibold text-stone-700">
           <span>See your individual responses</span>
           {showAll ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
         </button>
         {showAll && (
           <div className="mt-3 space-y-2">
             {ARCHETYPE_STATEMENTS.map((s, i) => (
-              <div key={i} className="flex items-start gap-3 text-sm border-t border-slate-800 pt-2 first:border-0 first:pt-0">
-                <div className="text-yellow-400 font-bold tabular-nums w-8 flex-shrink-0">{profile.archetypeScores[i]}/10</div>
-                <div className="text-slate-300">{s}</div>
+              <div key={i} className="flex items-start gap-3 text-sm border-t border-stone-200 pt-2 first:border-0 first:pt-0">
+                <div className="text-amber-500 font-bold tabular-nums w-8 flex-shrink-0">{profile.archetypeScores[i]}/10</div>
+                <div className="text-stone-700">{s}</div>
               </div>
             ))}
           </div>
@@ -1136,11 +1136,11 @@ function ScoreBar({ leftLabel, rightLabel, leftScore, rightScore }) {
   const leftPct = (+leftScore / total) * 100;
   return (
     <div>
-      <div className="flex justify-between text-xs text-slate-400 mb-1">
-        <span className="font-semibold">{leftLabel} <span className="text-slate-500">{leftScore}</span></span>
-        <span className="font-semibold"><span className="text-slate-500">{rightScore}</span> {rightLabel}</span>
+      <div className="flex justify-between text-xs text-stone-500 mb-1">
+        <span className="font-semibold">{leftLabel} <span className="text-stone-500">{leftScore}</span></span>
+        <span className="font-semibold"><span className="text-stone-500">{rightScore}</span> {rightLabel}</span>
       </div>
-      <div className="h-2 bg-slate-800 rounded-full overflow-hidden flex">
+      <div className="h-2 bg-stone-100 rounded-full overflow-hidden flex">
         <div className="h-full bg-yellow-400" style={{ width: `${leftPct}%` }} />
         <div className="h-full bg-violet-400" style={{ width: `${100 - leftPct}%` }} />
       </div>
@@ -1152,33 +1152,33 @@ function Confirmation({ profile, onExit, onTakeAssessment }) {
   const a = profile.archetype ? ARCHETYPES[profile.archetype] : null;
   return (
     <div className="space-y-6 text-center">
-      <CheckCircle2 size={64} className="text-yellow-400 mx-auto" />
-      <h2 className="text-5xl font-black">You're on the list <Zap className="inline text-yellow-400 fill-yellow-400" /></h2>
-      <p className="text-slate-300 text-lg max-w-xl mx-auto">
+      <CheckCircle2 size={64} className="text-amber-500 mx-auto" />
+      <h2 className="text-5xl font-black font-display">You're on the list <Zap className="inline text-amber-500 fill-yellow-400" /></h2>
+      <p className="text-stone-700 text-lg max-w-xl mx-auto">
         Zap reviews every application personally. You'll hear from us within 5 business days. If approved, we'll set up coffee or a Zoom to get to know you in person — that's how every candidate gets into the live database.
       </p>
       {a && (
         <Card className="text-left max-w-md mx-auto">
-          <div className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-2">Your archetype</div>
+          <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-2">Your archetype</div>
           <div className="flex items-center gap-3">
             <div className="text-5xl">{a.icon}</div>
             <div>
               <div className="text-2xl font-black">{a.label}</div>
-              <div className="text-xs text-slate-400">{a.short}</div>
+              <div className="text-xs text-stone-500">{a.short}</div>
             </div>
           </div>
         </Card>
       )}
       {!profile.hasAssessment && (
-        <Card className="max-w-md mx-auto bg-slate-900/40 border-yellow-400/20">
+        <Card className="max-w-md mx-auto bg-stone-50 border border-yellow-200">
           <div className="text-sm">
             Want to add your archetype later? It takes 5 minutes.
-            <button onClick={onTakeAssessment} className="block mt-2 text-yellow-400 font-bold hover:underline">Take the assessment →</button>
+            <button onClick={onTakeAssessment} className="block mt-2 text-amber-500 font-bold hover:underline">Take the assessment →</button>
           </div>
         </Card>
       )}
       <Card className="text-left max-w-md mx-auto">
-        <div className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-3">What's next</div>
+        <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-3">What's next</div>
         <div className="space-y-2 text-sm">
           {[
             ["Application Review", "Within 5 business days"],
@@ -1187,10 +1187,10 @@ function Confirmation({ profile, onExit, onTakeAssessment }) {
             ["Warm Intros", "Founders come to you"],
           ].map(([t, d], i) => (
             <div key={i} className="flex items-center gap-3">
-              <div className="w-6 h-6 rounded-full bg-yellow-400 text-slate-900 font-bold text-xs flex items-center justify-center flex-shrink-0">{i + 1}</div>
+              <div className="w-6 h-6 rounded-full bg-yellow-400 text-black font-bold text-xs flex items-center justify-center flex-shrink-0">{i + 1}</div>
               <div>
-                <div className="font-bold text-slate-200">{t}</div>
-                <div className="text-xs text-slate-500">{d}</div>
+                <div className="font-bold text-stone-900">{t}</div>
+                <div className="text-xs text-stone-500">{d}</div>
               </div>
             </div>
           ))}
@@ -1199,7 +1199,7 @@ function Confirmation({ profile, onExit, onTakeAssessment }) {
       <div className="pt-4">
         <Button variant="secondary" icon={Mail} onClick={onExit}>Subscribe to Zap's Wrap</Button>
       </div>
-      <button onClick={onExit} className="text-sm text-slate-500 hover:text-yellow-400">Back to home</button>
+      <button onClick={onExit} className="text-sm text-stone-500 hover:text-amber-500">Back to home</button>
     </div>
   );
 }
@@ -1247,7 +1247,7 @@ function CompanyPortal({ onExit, preselectedCompanyId }) {
   const company = DATA_BUNDLE.companies.find(c => c.id === me);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div className="min-h-screen bg-white text-black">
       <CompanyShellHeader company={company} onExit={onExit} setView={setView} view={view} />
       <div className="max-w-7xl mx-auto px-6 py-6">
         {view === "home" && (
@@ -1307,13 +1307,13 @@ function CompanyPortal({ onExit, preselectedCompanyId }) {
 
 function CompanyShellHeader({ company, onExit, setView, view }) {
   return (
-    <div className="border-b border-slate-800 bg-slate-950/80 backdrop-blur sticky top-0 z-30">
+    <div className="border-b border-stone-200 bg-white/90 backdrop-blur sticky top-0 z-30">
       <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-6">
-          <button onClick={() => setView("home")} className="flex items-center gap-2 hover:text-yellow-400">
-            <Zap className="text-yellow-400 fill-yellow-400" size={18} />
+          <button onClick={() => setView("home")} className="flex items-center gap-2 hover:text-amber-500">
+            <Zap className="text-amber-500 fill-yellow-400" size={18} />
             <span className="font-black tracking-tight">Lighthouse</span>
-            <span className="text-slate-500 text-xs">Hire</span>
+            <span className="text-stone-500 text-xs">Hire</span>
           </button>
           <nav className="hidden md:flex items-center gap-1">
             {[
@@ -1323,14 +1323,14 @@ function CompanyShellHeader({ company, onExit, setView, view }) {
               { k: "shortlists", l: "Shortlists", icon: Star },
             ].map(it => (
               <button key={it.k} onClick={() => setView(it.k)}
-                      className={`px-3 py-1.5 text-sm rounded-lg transition flex items-center gap-1.5 ${view === it.k ? "bg-slate-800 text-yellow-400" : "text-slate-400 hover:text-slate-100"}`}>
+                      className={`px-3 py-1.5 text-sm rounded-lg transition flex items-center gap-1.5 ${view === it.k ? "bg-stone-100 text-amber-500" : "text-stone-500 hover:text-black"}`}>
                 <it.icon size={14} />{it.l}
               </button>
             ))}
           </nav>
         </div>
         <div className="flex items-center gap-3">
-          <div className="text-xs text-slate-400 hidden sm:block">{company?.name}</div>
+          <div className="text-xs text-stone-500 hidden sm:block">{company?.name}</div>
           <Button variant="ghost" size="sm" icon={LogOut} onClick={onExit}>Exit</Button>
         </div>
       </div>
@@ -1343,12 +1343,12 @@ function CompanyLogin({ onLogin, onExit }) {
   const [password, setPassword] = useState("password");
   const [companyId, setCompanyId] = useState(5); // SoundHealth default
   return (
-    <div className="min-h-screen flex items-center justify-center p-8 bg-slate-950 text-slate-100">
+    <div className="min-h-screen flex items-center justify-center p-8 bg-white text-black">
       <div className="max-w-md w-full">
         <div className="text-center mb-6">
-          <Zap className="text-yellow-400 fill-yellow-400 mx-auto mb-2" size={32} />
+          <Zap className="text-amber-500 fill-yellow-400 mx-auto mb-2" size={32} />
           <div className="font-black text-2xl">Lighthouse Hire</div>
-          <div className="text-sm text-slate-400 mt-1">Find your next teammate.</div>
+          <div className="text-sm text-stone-500 mt-1">Find your next teammate.</div>
         </div>
         <Card>
           <Field label="Company login email" required><Input value={email} onChange={e => setEmail(e.target.value)} /></Field>
@@ -1363,7 +1363,7 @@ function CompanyLogin({ onLogin, onExit }) {
           <Button onClick={() => onLogin(companyId)} className="w-full" icon={ArrowRight}>Sign in</Button>
         </Card>
         <div className="text-center mt-6">
-          <button onClick={onExit} className="text-xs text-slate-500 hover:text-yellow-400">← Back to landing</button>
+          <button onClick={onExit} className="text-xs text-stone-500 hover:text-amber-500">← Back to landing</button>
         </div>
       </div>
     </div>
@@ -1383,35 +1383,35 @@ function CompanyHome({ onSearch, savedSearches, setView }) {
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
       <div className="text-center pt-6">
-        <h1 className="text-5xl md:text-6xl font-black tracking-tight">Find your next hire <Zap className="inline text-yellow-400 fill-yellow-400" /></h1>
-        <p className="text-slate-400 text-lg mt-3">Describe what you need. We'll match you with vetted talent from Nashville and beyond.</p>
+        <h1 className="text-5xl md:text-6xl font-black tracking-tight font-display">Find your next hire <Zap className="inline text-amber-500 fill-yellow-400" /></h1>
+        <p className="text-stone-500 text-lg mt-3">Describe what you need. We'll match you with vetted talent from Nashville and beyond.</p>
       </div>
       <Card padded={false} className="p-2">
         <Textarea rows={5} value={text} onChange={e => setText(e.target.value)}
           placeholder={`We're looking for an early-stage operator who can run our day-to-day, set up vendor relationships, manage our 12-person team, and act as the glue person across departments. Bonus if they have experience scaling a Series A company...`}
           className="border-0 bg-transparent text-base" />
-        <div className="flex items-center justify-between px-3 pb-2 pt-1 border-t border-slate-800">
-          <div className={`text-xs ${inRange ? "text-emerald-400" : "text-slate-500"}`}>
+        <div className="flex items-center justify-between px-3 pb-2 pt-1 border-t border-stone-200">
+          <div className={`text-xs ${inRange ? "text-emerald-600" : "text-stone-500"}`}>
             {wordCount} words {inRange ? "✓ great length" : "· recommended 25–50 words (you can write more)"}
           </div>
           <Button onClick={() => text.trim() && onSearch(text)} icon={Search} disabled={!text.trim()}>Search</Button>
         </div>
       </Card>
       <div className="text-center">
-        <div className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-2">Or start from a preset</div>
+        <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-2">Or start from a preset</div>
         <div className="flex flex-wrap justify-center gap-2">
           {presets.map(p => (
             <button key={p.t} onClick={() => setText(p.q)}
-                    className="bg-slate-900 border border-slate-800 hover:border-yellow-400/40 px-3 py-1.5 rounded-full text-xs font-medium text-slate-300 hover:text-yellow-400 transition">
+                    className="bg-white border border-stone-200 hover:border-yellow-300 px-3 py-1.5 rounded-full text-xs font-medium text-stone-700 hover:text-amber-500 transition">
               {p.t}
             </button>
           ))}
         </div>
       </div>
-      <div className="flex items-center justify-center gap-4 text-xs text-slate-500 pt-4">
-        <button onClick={() => setView("searches")} className="hover:text-yellow-400">Recent searches →</button>
+      <div className="flex items-center justify-center gap-4 text-xs text-stone-500 pt-4">
+        <button onClick={() => setView("searches")} className="hover:text-amber-500">Recent searches →</button>
         <span>·</span>
-        <button onClick={() => setView("shortlists")} className="hover:text-yellow-400">My shortlists →</button>
+        <button onClick={() => setView("shortlists")} className="hover:text-amber-500">My shortlists →</button>
       </div>
     </div>
   );
@@ -1427,7 +1427,7 @@ function SearchResults({
   if (searchLoading) {
     return <div className="min-h-[40vh] flex flex-col items-center justify-center">
       <div className="animate-spin h-10 w-10 border-4 border-yellow-400 border-t-transparent rounded-full mb-4" />
-      <div className="text-lg font-bold text-center">Reading your description...<br/><span className="text-slate-400 text-sm">matching against vetted talent... ranking results.</span></div>
+      <div className="text-lg font-bold text-center">Reading your description...<br/><span className="text-stone-500 text-sm">matching against vetted talent... ranking results.</span></div>
     </div>;
   }
   if (!interp) return <div>Run a search.</div>;
@@ -1452,8 +1452,8 @@ function SearchResults({
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <div className="text-xs uppercase tracking-wider text-slate-500 font-bold">Search</div>
-          <div className="text-sm text-slate-300 max-w-3xl line-clamp-2">{query}</div>
+          <div className="text-xs uppercase tracking-wider text-stone-500 font-bold">Search</div>
+          <div className="text-sm text-stone-700 max-w-3xl line-clamp-2">{query}</div>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="sm" icon={Save} onClick={onSaveSearch}>Save search</Button>
@@ -1470,17 +1470,17 @@ function SearchResults({
           {showRefineCard && <RefineCard onStart={onRefine} onDismiss={() => setShowRefineCard(false)} />}
 
           <div className="flex items-center justify-between flex-wrap gap-2 pt-2">
-            <div className="text-sm text-slate-400">
-              <span className="font-bold text-yellow-400">{top.length}</span> candidates ranked {refinement.skillScores && <Tag color="yellow"><Sparkles size={10} /> Refined by skill spec</Tag>}
+            <div className="text-sm text-stone-500">
+              <span className="font-bold text-amber-500">{top.length}</span> candidates ranked {refinement.skillScores && <Tag color="yellow"><Sparkles size={10} /> Refined by skill spec</Tag>}
               {refinement.cultureArchetype && <span> · culture: <Tag color="purple">{CULTURE_ARCHETYPES[refinement.cultureArchetype.quad]?.icon} {refinement.cultureArchetype.quad}</Tag></span>}
             </div>
             <div className="flex items-center gap-2">
               <Select value={sort} onChange={setSort} className="text-xs py-1 w-auto"
                 options={[{ value: "match", label: "Sort: Match score" }, { value: "yoe", label: "Sort: Experience" }, { value: "recent", label: "Sort: Recently joined" }]} />
-              <div className="flex bg-slate-900 rounded-lg border border-slate-800 p-0.5">
+              <div className="flex bg-white border border-stone-200 rounded-lg border border-stone-200 p-0.5">
                 {[{ k: "list", icon: List }, { k: "grid", icon: Grid3x3 }, { k: "map", icon: Map }].map(o => (
                   <button key={o.k} onClick={() => setViewMode(o.k)}
-                          className={`p-1.5 rounded ${viewMode === o.k ? "bg-yellow-400 text-slate-900" : "text-slate-400 hover:text-slate-100"}`}>
+                          className={`p-1.5 rounded ${viewMode === o.k ? "bg-yellow-400 text-black" : "text-stone-500 hover:text-black"}`}>
                     <o.icon size={14} />
                   </button>
                 ))}
@@ -1500,12 +1500,12 @@ function SearchResults({
           </div>}
           {viewMode === "grid" && <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {top.map(({ candidate, score }) => (
-              <Card key={candidate.id} onClick={() => onOpenProfile(candidate.id)} className="hover:border-yellow-400/30">
+              <Card key={candidate.id} onClick={() => onOpenProfile(candidate.id)} className="hover:border-yellow-300">
                 <div className="flex items-center gap-2 mb-2">
                   <Avatar candidate={candidate} size={36} />
                   <div className="min-w-0">
                     <div className="font-bold text-sm truncate">{candidate.firstName} {candidate.lastName}</div>
-                    <div className="text-xs text-slate-400 truncate">{candidate.currentRole}</div>
+                    <div className="text-xs text-stone-500 truncate">{candidate.currentRole}</div>
                   </div>
                 </div>
                 <div className="flex items-center justify-between">
@@ -1519,9 +1519,9 @@ function SearchResults({
 
           {top.length === 0 && (
             <Card className="text-center py-12">
-              <AlertCircle className="text-slate-500 mx-auto mb-2" />
+              <AlertCircle className="text-stone-500 mx-auto mb-2" />
               <div className="font-bold">No matches yet</div>
-              <div className="text-xs text-slate-500 mt-1">Try loosening your filters or rephrasing the search.</div>
+              <div className="text-xs text-stone-500 mt-1">Try loosening your filters or rephrasing the search.</div>
             </Card>
           )}
         </div>
@@ -1533,21 +1533,21 @@ function SearchResults({
 function AIInterpretCard({ interp, setInterp }) {
   function removeSkill(s) { setInterp({ ...interp, skills: interp.skills.filter(x => x !== s) }); }
   return (
-    <Card className="border-yellow-400/20">
+    <Card className="border-yellow-200">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-slate-500 font-bold">
-          <Sparkles size={12} className="text-yellow-400" /> Here's what we heard
+        <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-stone-500 font-bold">
+          <Sparkles size={12} className="text-amber-500" /> Here's what we heard
         </div>
       </div>
       <div className="grid sm:grid-cols-2 gap-3 mt-3 text-sm">
-        <div><span className="text-slate-500 text-xs">Role type</span><div><Tag color="yellow">{interp.role}</Tag></div></div>
-        <div><span className="text-slate-500 text-xs">Seniority</span><div><Tag color="blue">{interp.seniority} ({interp.years[0]}–{interp.years[1]} yrs)</Tag></div></div>
-        {interp.stage && <div><span className="text-slate-500 text-xs">Stage fit</span><div><Tag color="green">{interp.stage}</Tag></div></div>}
-        <div><span className="text-slate-500 text-xs">Location</span><div><Tag>{interp.location}</Tag></div></div>
-        <div className="sm:col-span-2"><span className="text-slate-500 text-xs">Key skills</span>
+        <div><span className="text-stone-500 text-xs">Role type</span><div><Tag color="yellow">{interp.role}</Tag></div></div>
+        <div><span className="text-stone-500 text-xs">Seniority</span><div><Tag color="blue">{interp.seniority} ({interp.years[0]}–{interp.years[1]} yrs)</Tag></div></div>
+        {interp.stage && <div><span className="text-stone-500 text-xs">Stage fit</span><div><Tag color="green">{interp.stage}</Tag></div></div>}
+        <div><span className="text-stone-500 text-xs">Location</span><div><Tag>{interp.location}</Tag></div></div>
+        <div className="sm:col-span-2"><span className="text-stone-500 text-xs">Key skills</span>
           <div className="flex flex-wrap gap-1 mt-1">
             {interp.skills.map(s => (
-              <span key={s} className="inline-flex items-center gap-1 bg-yellow-400/15 text-yellow-300 border border-yellow-400/40 px-2 py-0.5 rounded-full text-xs font-medium">
+              <span key={s} className="inline-flex items-center gap-1 bg-yellow-100 text-amber-800 border border-yellow-300 px-2 py-0.5 rounded-full text-xs font-medium">
                 {s}
                 <button onClick={() => removeSkill(s)} className="ml-1 opacity-60 hover:opacity-100"><X size={10} /></button>
               </span>
@@ -1555,12 +1555,12 @@ function AIInterpretCard({ interp, setInterp }) {
           </div>
         </div>
         {interp.archetypeLean && (
-          <div className="sm:col-span-2"><span className="text-slate-500 text-xs">Archetype lean</span>
-            <div><ArchetypeBadge quad={interp.archetypeLean} size="lg" /> <span className="text-xs text-slate-500 ml-1">inferred</span></div>
+          <div className="sm:col-span-2"><span className="text-stone-500 text-xs">Archetype lean</span>
+            <div><ArchetypeBadge quad={interp.archetypeLean} size="lg" /> <span className="text-xs text-stone-500 ml-1">inferred</span></div>
           </div>
         )}
         {interp.signals.length > 0 && (
-          <div className="sm:col-span-2"><span className="text-slate-500 text-xs">Other signals</span>
+          <div className="sm:col-span-2"><span className="text-stone-500 text-xs">Other signals</span>
             <div className="flex flex-wrap gap-1 mt-1">{interp.signals.map(s => <Tag key={s}>{s}</Tag>)}</div>
           </div>
         )}
@@ -1572,25 +1572,25 @@ function AIInterpretCard({ interp, setInterp }) {
 function JDSuggestionCard({ jds, onDismiss, onLockIn }) {
   const [expanded, setExpanded] = useState(null);
   return (
-    <Card className="bg-slate-900/40">
+    <Card className="bg-stone-50 border border-stone-200">
       <div className="flex items-center justify-between mb-2">
-        <div className="text-xs uppercase tracking-wider text-slate-500 font-bold">Did we get this right? <Tag color="yellow">OPTIONAL</Tag></div>
-        <button onClick={onDismiss} className="text-slate-500 hover:text-slate-200"><X size={14} /></button>
+        <div className="text-xs uppercase tracking-wider text-stone-500 font-bold">Did we get this right? <Tag color="yellow">OPTIONAL</Tag></div>
+        <button onClick={onDismiss} className="text-stone-500 hover:text-stone-900"><X size={14} /></button>
       </div>
-      <div className="text-sm text-slate-300 mb-3">Here are a few similar roles in our database that might match what you're describing.</div>
+      <div className="text-sm text-stone-700 mb-3">Here are a few similar roles in our database that might match what you're describing.</div>
       <div className="grid sm:grid-cols-3 gap-2">
         {jds.map(jd => (
-          <div key={jd.id} className="bg-slate-900/80 border border-slate-800 rounded-lg p-3">
+          <div key={jd.id} className="bg-white border border-stone-200 rounded-lg p-3">
             <div className="text-sm font-bold">{jd.title}</div>
-            <div className="text-xs text-slate-400 mt-0.5">{jd.stage} · {jd.industry}</div>
-            <button onClick={() => setExpanded(expanded === jd.id ? null : jd.id)} className="text-xs text-yellow-400 mt-2 hover:underline">
+            <div className="text-xs text-stone-500 mt-0.5">{jd.stage} · {jd.industry}</div>
+            <button onClick={() => setExpanded(expanded === jd.id ? null : jd.id)} className="text-xs text-amber-500 mt-2 hover:underline">
               {expanded === jd.id ? "Hide JD" : "View JD"}
             </button>
-            {expanded === jd.id && <div className="text-xs text-slate-300 mt-2 pt-2 border-t border-slate-800">{jd.body}</div>}
+            {expanded === jd.id && <div className="text-xs text-stone-700 mt-2 pt-2 border-t border-stone-200">{jd.body}</div>}
           </div>
         ))}
       </div>
-      <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-slate-800">
+      <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-stone-200">
         <Button size="sm" onClick={onLockIn}>Yes, this is what we want</Button>
         <Button size="sm" variant="skip" onClick={onDismiss}>Not quite — let me refine</Button>
         <Button size="sm" variant="ghost" onClick={onDismiss}>Skip this step</Button>
@@ -1601,19 +1601,19 @@ function JDSuggestionCard({ jds, onDismiss, onLockIn }) {
 
 function RefineCard({ onStart, onDismiss }) {
   return (
-    <Card className="bg-gradient-to-br from-slate-900/60 to-violet-900/20 border-violet-500/20">
+    <Card className="bg-gradient-to-br from-stone-50 to-amber-50/40 border-violet-200">
       <div className="flex items-start gap-3">
-        <Sparkles className="text-violet-400 flex-shrink-0" />
+        <Sparkles className="text-violet-700 flex-shrink-0" />
         <div className="flex-1">
-          <div className="text-xs uppercase tracking-wider text-violet-400/90 font-bold flex items-center gap-2">Power user mode <Tag color="purple">OPTIONAL</Tag></div>
+          <div className="text-xs uppercase tracking-wider text-violet-700 font-bold flex items-center gap-2">Power user mode <Tag color="purple">OPTIONAL</Tag></div>
           <div className="text-sm font-bold mt-0.5">Not quite finding the right fit?</div>
-          <div className="text-sm text-slate-400">Spend 5 minutes telling us exactly what you need and what your company culture is like. We'll re-rank candidates based on the perfect match.</div>
+          <div className="text-sm text-stone-500">Spend 5 minutes telling us exactly what you need and what your company culture is like. We'll re-rank candidates based on the perfect match.</div>
           <div className="flex gap-2 mt-3">
             <Button size="sm" onClick={onStart}>Start refining</Button>
             <Button size="sm" variant="skip" onClick={onDismiss}>Skip</Button>
           </div>
         </div>
-        <button onClick={onDismiss} className="text-slate-500 hover:text-slate-200"><X size={14} /></button>
+        <button onClick={onDismiss} className="text-stone-500 hover:text-stone-900"><X size={14} /></button>
       </div>
     </Card>
   );
@@ -1631,7 +1631,7 @@ function FilterSidebar({ filters, setFilters, interp }) {
   return (
     <div className="space-y-4 lg:sticky lg:top-20 self-start">
       <Card className="space-y-4">
-        <div className="text-xs uppercase tracking-wider text-slate-500 font-bold flex items-center gap-2">
+        <div className="text-xs uppercase tracking-wider text-stone-500 font-bold flex items-center gap-2">
           <Filter size={12} /> Filters
         </div>
         <Field label="Years of experience" hint={`${filters.yoeMin}–${filters.yoeMax} yrs`}>
@@ -1647,7 +1647,7 @@ function FilterSidebar({ filters, setFilters, interp }) {
           <div className="flex flex-wrap gap-1 max-h-40 overflow-y-auto">
             {popularSkills.map(s => (
               <button key={s} onClick={() => setFilters({ ...filters, skills: toggle(filters.skills, s) })}
-                      className={`px-2 py-0.5 text-[10px] rounded-full border transition ${filters.skills.includes(s) ? "bg-yellow-400 border-yellow-400 text-slate-900 font-bold" : "bg-slate-900 border-slate-700 text-slate-300"}`}>
+                      className={`px-2 py-0.5 text-[10px] rounded-full border transition ${filters.skills.includes(s) ? "bg-yellow-400 border-yellow-400 text-black font-bold" : "bg-white border border-stone-300 text-stone-700"}`}>
                 {s}
               </button>
             ))}
@@ -1655,11 +1655,11 @@ function FilterSidebar({ filters, setFilters, interp }) {
         </Field>
         <label className="flex items-center gap-2 text-sm cursor-pointer">
           <input type="checkbox" checked={filters.vettedOnly} onChange={e => setFilters({ ...filters, vettedOnly: e.target.checked })} className="accent-yellow-400" />
-          <span className="text-slate-300">Only Zap-vetted candidates</span>
+          <span className="text-stone-700">Only Zap-vetted candidates</span>
         </label>
       </Card>
       <Card>
-        <button onClick={() => setArchetypeOpen(!archetypeOpen)} className="w-full text-left flex items-center justify-between text-xs uppercase tracking-wider text-slate-500 font-bold">
+        <button onClick={() => setArchetypeOpen(!archetypeOpen)} className="w-full text-left flex items-center justify-between text-xs uppercase tracking-wider text-stone-500 font-bold">
           <span>Archetype filter <Tag color="purple">OPTIONAL</Tag></span>
           {archetypeOpen ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
         </button>
@@ -1668,16 +1668,16 @@ function FilterSidebar({ filters, setFilters, interp }) {
             <div className="grid grid-cols-2 gap-1">
               {Object.entries(ARCHETYPES).filter(([k]) => k !== "Balanced").map(([k, a]) => (
                 <button key={k} onClick={() => setFilters({ ...filters, archetypes: toggle(filters.archetypes, k) })}
-                        className={`p-2 rounded-lg text-xs text-left border transition ${filters.archetypes.includes(k) ? "border-yellow-400 bg-yellow-400/10" : "border-slate-800 hover:border-slate-700"}`}>
+                        className={`p-2 rounded-lg text-xs text-left border transition ${filters.archetypes.includes(k) ? "border-yellow-400 bg-yellow-100" : "border-stone-200 hover:border-stone-300"}`}>
                   <div className="text-base">{a.icon}</div>
                   <div className="font-bold">{k}</div>
-                  <div className="text-slate-500 text-[10px]">{a.short}</div>
+                  <div className="text-stone-500 text-[10px]">{a.short}</div>
                 </button>
               ))}
             </div>
             <label className="flex items-center gap-2 text-xs cursor-pointer">
               <input type="checkbox" checked={filters.assessmentOnly} onChange={e => setFilters({ ...filters, assessmentOnly: e.target.checked })} className="accent-yellow-400" />
-              <span className="text-slate-300">Only candidates who completed assessment</span>
+              <span className="text-stone-700">Only candidates who completed assessment</span>
             </label>
           </div>
         )}
@@ -1689,7 +1689,7 @@ function FilterSidebar({ filters, setFilters, interp }) {
 function CandidateCard({ candidate, score, breakdown, interp, onOpenProfile, onShortlist, shortlists }) {
   const [showShort, setShowShort] = useState(false);
   return (
-    <Card className="hover:border-yellow-400/30 transition">
+    <Card className="hover:border-yellow-300 transition">
       <div className="flex gap-4">
         <Avatar candidate={candidate} size={56} />
         <div className="flex-1 min-w-0">
@@ -1699,19 +1699,19 @@ function CandidateCard({ candidate, score, breakdown, interp, onOpenProfile, onS
                 <div className="font-bold text-lg truncate">{candidate.firstName} {candidate.lastName}</div>
                 {candidate.archetype && <ArchetypeBadge quad={candidate.archetype} />}
               </div>
-              <div className="text-sm text-slate-400 truncate">{candidate.currentRole} {candidate.currentCompany && `· ${candidate.currentCompany}`}</div>
-              <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-3 flex-wrap">
+              <div className="text-sm text-stone-500 truncate">{candidate.currentRole} {candidate.currentCompany && `· ${candidate.currentCompany}`}</div>
+              <div className="text-xs text-stone-500 mt-0.5 flex items-center gap-3 flex-wrap">
                 <span><Clock size={10} className="inline mr-0.5" /> {candidate.yearsExperience} yrs</span>
                 <span><MapPin size={10} className="inline mr-0.5" /> {candidate.location}</span>
                 {candidate.salary && !candidate.salary.optOut && <span><DollarSign size={10} className="inline" />{candidate.salary.min}–{candidate.salary.max}K</span>}
               </div>
             </div>
             <div className="text-right">
-              <div className="text-2xl font-black text-yellow-400 tabular-nums leading-none">{score}</div>
-              <div className="text-[10px] uppercase tracking-wider text-slate-500 font-bold mt-0.5 group relative">
+              <div className="text-2xl font-black text-amber-500 tabular-nums leading-none">{score}</div>
+              <div className="text-[10px] uppercase tracking-wider text-stone-500 font-bold mt-0.5 group relative">
                 match
-                <div className="absolute right-0 top-5 w-56 bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-left text-slate-300 hidden group-hover:block z-20 shadow-xl">
-                  <div className="font-bold text-yellow-400 mb-1">Score breakdown</div>
+                <div className="absolute right-0 top-5 w-56 bg-white border border-stone-300 rounded-lg p-2 text-xs text-left text-stone-700 hidden group-hover:block z-20 shadow-xl">
+                  <div className="font-bold text-amber-500 mb-1">Score breakdown</div>
                   <div>Semantic match: {breakdown?.semantic}</div>
                   <div>Filter match: {breakdown?.filter}</div>
                   <div>Recency: {breakdown?.recency}</div>
@@ -1722,21 +1722,21 @@ function CandidateCard({ candidate, score, breakdown, interp, onOpenProfile, onS
           </div>
           <div className="flex flex-wrap gap-1 mt-2">
             {candidate.skills.slice(0, 4).map(s => <Tag key={s}>{s}</Tag>)}
-            {candidate.skills.length > 4 && <span className="text-xs text-slate-500">+{candidate.skills.length - 4}</span>}
+            {candidate.skills.length > 4 && <span className="text-xs text-stone-500">+{candidate.skills.length - 4}</span>}
           </div>
-          <div className="text-sm text-slate-300 mt-2 italic line-clamp-2">{explainMatch(candidate, interp)}</div>
+          <div className="text-sm text-stone-700 mt-2 italic line-clamp-2">{explainMatch(candidate, interp)}</div>
           <div className="flex items-center gap-2 mt-3">
             <Button size="sm" icon={Coffee} onClick={() => alert("Mock: drafting an intro for Zap...")}>Request intro</Button>
             <div className="relative">
               <Button size="sm" variant="secondary" icon={Star} onClick={() => setShowShort(!showShort)}>Save</Button>
               {showShort && (
-                <div className="absolute top-9 right-0 w-56 bg-slate-900 border border-slate-700 rounded-lg p-2 z-30 shadow-xl">
-                  <div className="text-[10px] uppercase tracking-wider text-slate-500 font-bold mb-1">Save to shortlist</div>
-                  {shortlists.length === 0 && <div className="text-xs text-slate-400 p-2">No shortlists yet.</div>}
+                <div className="absolute top-9 right-0 w-56 bg-white border border-stone-300 rounded-lg p-2 z-30 shadow-xl">
+                  <div className="text-[10px] uppercase tracking-wider text-stone-500 font-bold mb-1">Save to shortlist</div>
+                  {shortlists.length === 0 && <div className="text-xs text-stone-500 p-2">No shortlists yet.</div>}
                   {shortlists.map(s => (
                     <button key={s.id} onClick={() => { onShortlist(s.id); setShowShort(false); }}
-                            className="w-full text-left text-xs p-2 hover:bg-slate-800 rounded">
-                      {s.name} <span className="text-slate-500">({s.candidateIds.length})</span>
+                            className="w-full text-left text-xs p-2 hover:bg-stone-100 rounded">
+                      {s.name} <span className="text-stone-500">({s.candidateIds.length})</span>
                     </button>
                   ))}
                 </div>
@@ -1761,11 +1761,11 @@ function CandidateProfileView({ candidate, onBack, interp, onShortlist, shortlis
           <Avatar candidate={candidate} size={80} />
           <div className="flex-1 min-w-[240px]">
             <div className="flex items-center gap-2 flex-wrap">
-              <div className="text-3xl font-black">{candidate.firstName} {candidate.lastName}</div>
+              <div className="text-3xl font-black font-display">{candidate.firstName} {candidate.lastName}</div>
               {candidate.archetype && <ArchetypeBadge quad={candidate.archetype} size="lg" />}
             </div>
-            <div className="text-slate-400">{candidate.currentRole} · {candidate.currentCompany}</div>
-            <div className="flex gap-3 mt-2 text-xs text-slate-500">
+            <div className="text-stone-500">{candidate.currentRole} · {candidate.currentCompany}</div>
+            <div className="flex gap-3 mt-2 text-xs text-stone-500">
               <span><Clock size={11} className="inline mr-0.5" /> {candidate.yearsExperience} yrs</span>
               <span><MapPin size={11} className="inline mr-0.5" /> {candidate.location}</span>
               {candidate.salary && !candidate.salary.optOut && <span><DollarSign size={11} className="inline" />{candidate.salary.min}–{candidate.salary.max}K</span>}
@@ -1773,7 +1773,7 @@ function CandidateProfileView({ candidate, onBack, interp, onShortlist, shortlis
           </div>
           <div className="text-right">
             <Button icon={Coffee}>Request intro</Button>
-            <div className="text-xs text-slate-500 mt-1">via Zap, with context</div>
+            <div className="text-xs text-stone-500 mt-1">via Zap, with context</div>
           </div>
         </div>
       </Card>
@@ -1781,21 +1781,21 @@ function CandidateProfileView({ candidate, onBack, interp, onShortlist, shortlis
       <div className="grid md:grid-cols-3 gap-4">
         <div className="md:col-span-2 space-y-4">
           <Card>
-            <div className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-2">Background</div>
+            <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-2">Background</div>
             <div className="text-sm">
               <div className="font-bold mb-2">Work history</div>
               <div className="space-y-2">
                 {candidate.workHistory.map((w, i) => (
-                  <div key={i} className="border-l-2 border-slate-800 pl-3">
-                    <div className="font-semibold text-slate-100">{w.title}</div>
-                    <div className="text-slate-400 text-xs">{w.company} · {w.startYear}–{w.endYear}</div>
+                  <div key={i} className="border-l-2 border-stone-200 pl-3">
+                    <div className="font-semibold text-black">{w.title}</div>
+                    <div className="text-stone-500 text-xs">{w.company} · {w.startYear}–{w.endYear}</div>
                   </div>
                 ))}
               </div>
               <div className="font-bold mt-4 mb-2">Education</div>
               <div className="space-y-1">
                 {candidate.education.map((e, i) => (
-                  <div key={i} className="text-slate-300 text-sm">
+                  <div key={i} className="text-stone-700 text-sm">
                     <span className="font-semibold">{e.school}</span> · {e.degree} · {e.year}
                   </div>
                 ))}
@@ -1805,43 +1805,43 @@ function CandidateProfileView({ candidate, onBack, interp, onShortlist, shortlis
             </div>
           </Card>
           <Card>
-            <div className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-3">Their story</div>
+            <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-3">Their story</div>
             <div className="space-y-3 text-sm">
-              <div><div className="font-bold text-slate-200">Why startup?</div><div className="text-slate-300 mt-0.5">{candidate.whyStartup || "—"}</div></div>
-              <div><div className="font-bold text-slate-200">What roles they want</div><div className="text-slate-300 mt-0.5">{candidate.roleSummary || "—"}</div></div>
-              {candidate.biggestStrength && <div><div className="font-bold text-slate-200">Biggest strength</div><div className="text-slate-300 mt-0.5">{candidate.biggestStrength}</div></div>}
-              {candidate.superpower && <div><div className="font-bold text-slate-200">Superpower outside work</div><div className="text-slate-300 mt-0.5 italic">"{candidate.superpower}"</div></div>}
+              <div><div className="font-bold text-stone-900">Why startup?</div><div className="text-stone-700 mt-0.5">{candidate.whyStartup || "—"}</div></div>
+              <div><div className="font-bold text-stone-900">What roles they want</div><div className="text-stone-700 mt-0.5">{candidate.roleSummary || "—"}</div></div>
+              {candidate.biggestStrength && <div><div className="font-bold text-stone-900">Biggest strength</div><div className="text-stone-700 mt-0.5">{candidate.biggestStrength}</div></div>}
+              {candidate.superpower && <div><div className="font-bold text-stone-900">Superpower outside work</div><div className="text-stone-700 mt-0.5 italic">"{candidate.superpower}"</div></div>}
               {candidate.proudShipped && candidate.proudShipped.length > 0 && (
-                <div><div className="font-bold text-slate-200">Most proud of shipping</div>
-                  <ul className="text-slate-300 mt-0.5 list-disc pl-4 space-y-0.5">{candidate.proudShipped.map((p, i) => <li key={i}>{p}</li>)}</ul>
+                <div><div className="font-bold text-stone-900">Most proud of shipping</div>
+                  <ul className="text-stone-700 mt-0.5 list-disc pl-4 space-y-0.5">{candidate.proudShipped.map((p, i) => <li key={i}>{p}</li>)}</ul>
                 </div>
               )}
             </div>
           </Card>
           {candidate.vibe && (
             <Card>
-              <div className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-3">Vibe check</div>
+              <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-3">Vibe check</div>
               <div className="grid sm:grid-cols-2 gap-3 text-sm">
-                <div><div className="text-slate-500 text-xs">Nerds out about</div><div className="text-slate-200">{candidate.vibe.nerdAbout || "—"}</div></div>
-                <div><div className="text-slate-500 text-xs">Manager's 3 words</div><div className="text-slate-200">{Array.isArray(candidate.vibe.managerWords) ? candidate.vibe.managerWords.join(", ") : (candidate.vibe.managerWords || "—")}</div></div>
-                <div><div className="text-slate-500 text-xs">Future-self joke</div><div className="text-slate-200 italic">"{candidate.vibe.futureSelfJoke || "—"}"</div></div>
-                <div><div className="text-slate-500 text-xs">Karaoke song</div><div className="text-slate-200">🎵 {candidate.vibe.karaoke || "—"}</div></div>
+                <div><div className="text-stone-500 text-xs">Nerds out about</div><div className="text-stone-900">{candidate.vibe.nerdAbout || "—"}</div></div>
+                <div><div className="text-stone-500 text-xs">Manager's 3 words</div><div className="text-stone-900">{Array.isArray(candidate.vibe.managerWords) ? candidate.vibe.managerWords.join(", ") : (candidate.vibe.managerWords || "—")}</div></div>
+                <div><div className="text-stone-500 text-xs">Future-self joke</div><div className="text-stone-900 italic">"{candidate.vibe.futureSelfJoke || "—"}"</div></div>
+                <div><div className="text-stone-500 text-xs">Karaoke song</div><div className="text-stone-900">🎵 {candidate.vibe.karaoke || "—"}</div></div>
               </div>
             </Card>
           )}
           {candidate.archetype && candidate.archetypeXY && (
             <Card>
               <div className="flex items-center justify-between mb-2">
-                <div className="text-xs uppercase tracking-wider text-slate-500 font-bold">Archetype profile <Tag color="purple">OPTIONAL</Tag></div>
+                <div className="text-xs uppercase tracking-wider text-stone-500 font-bold">Archetype profile <Tag color="purple">OPTIONAL</Tag></div>
                 <ArchetypeBadge quad={candidate.archetype} size="lg" />
               </div>
               <ArchetypePlot candidates={DATA_BUNDLE.candidates.filter(c => c.hasAssessment)} highlight={candidate} height={280} />
               {candidate.archetypeScores && (
                 <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
                   {ARCHETYPE_STATEMENTS.map((s, i) => (
-                    <div key={i} className="flex items-center gap-2 border-l-2 border-yellow-400/30 pl-2">
-                      <span className="font-bold text-yellow-400 tabular-nums">{candidate.archetypeScores[i]}</span>
-                      <span className="text-slate-400 line-clamp-1">{s}</span>
+                    <div key={i} className="flex items-center gap-2 border-l-2 border-yellow-300 pl-2">
+                      <span className="font-bold text-amber-500 tabular-nums">{candidate.archetypeScores[i]}</span>
+                      <span className="text-stone-500 line-clamp-1">{s}</span>
                     </div>
                   ))}
                 </div>
@@ -1851,28 +1851,28 @@ function CandidateProfileView({ candidate, onBack, interp, onShortlist, shortlis
         </div>
         <div className="space-y-4">
           <Card>
-            <div className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-3">What they're looking for</div>
+            <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-3">What they're looking for</div>
             <div className="space-y-2 text-sm">
-              <div><span className="text-slate-500 text-xs">Stage</span><div className="flex flex-wrap gap-1 mt-1">{candidate.stagePreference.map(s => <Tag key={s} color="green">{s}</Tag>)}</div></div>
-              <div><span className="text-slate-500 text-xs">Role types</span><div className="flex flex-wrap gap-1 mt-1">{candidate.roleTypes.map(s => <Tag key={s}>{s}</Tag>)}</div></div>
-              <div><span className="text-slate-500 text-xs">Work mode</span><div><Tag>{candidate.workMode}</Tag></div></div>
-              <div><span className="text-slate-500 text-xs">Timing</span><div><Tag color="orange">{candidate.timing}</Tag></div></div>
-              <div><span className="text-slate-500 text-xs">Salary</span><div className="text-slate-200">{candidate.salary?.optOut ? "Prefers to discuss" : `$${candidate.salary?.min}–${candidate.salary?.max}K`}</div></div>
+              <div><span className="text-stone-500 text-xs">Stage</span><div className="flex flex-wrap gap-1 mt-1">{candidate.stagePreference.map(s => <Tag key={s} color="green">{s}</Tag>)}</div></div>
+              <div><span className="text-stone-500 text-xs">Role types</span><div className="flex flex-wrap gap-1 mt-1">{candidate.roleTypes.map(s => <Tag key={s}>{s}</Tag>)}</div></div>
+              <div><span className="text-stone-500 text-xs">Work mode</span><div><Tag>{candidate.workMode}</Tag></div></div>
+              <div><span className="text-stone-500 text-xs">Timing</span><div><Tag color="orange">{candidate.timing}</Tag></div></div>
+              <div><span className="text-stone-500 text-xs">Salary</span><div className="text-stone-900">{candidate.salary?.optOut ? "Prefers to discuss" : `$${candidate.salary?.min}–${candidate.salary?.max}K`}</div></div>
             </div>
           </Card>
-          <Card className="border-violet-400/20">
-            <div className="text-xs uppercase tracking-wider text-violet-400 font-bold mb-2">Zap's notes</div>
-            <div className="text-sm text-slate-300">Zap met {candidate.firstName} in person on {candidate.dateApplied}. Vetting notes available on request.</div>
+          <Card className="border-violet-200">
+            <div className="text-xs uppercase tracking-wider text-violet-700 font-bold mb-2">Zap's notes</div>
+            <div className="text-sm text-stone-700">Zap met {candidate.firstName} in person on {candidate.dateApplied}. Vetting notes available on request.</div>
           </Card>
           <div className="space-y-2">
             <div className="relative">
               <Button className="w-full" icon={Star} variant="secondary" onClick={() => setShowShort(!showShort)}>Save to shortlist</Button>
               {showShort && (
-                <div className="absolute top-12 left-0 right-0 bg-slate-900 border border-slate-700 rounded-lg p-2 z-30 shadow-xl">
-                  {shortlists.length === 0 && <div className="text-xs text-slate-400 p-2">No shortlists yet.</div>}
+                <div className="absolute top-12 left-0 right-0 bg-white border border-stone-300 rounded-lg p-2 z-30 shadow-xl">
+                  {shortlists.length === 0 && <div className="text-xs text-stone-500 p-2">No shortlists yet.</div>}
                   {shortlists.map(s => (
                     <button key={s.id} onClick={() => { onShortlist(s.id); setShowShort(false); }}
-                            className="w-full text-left text-xs p-2 hover:bg-slate-800 rounded">
+                            className="w-full text-left text-xs p-2 hover:bg-stone-100 rounded">
                       {s.name}
                     </button>
                   ))}
@@ -1899,18 +1899,18 @@ function DeepDive({ onComplete, onSkip }) {
     return (
       <div className="max-w-2xl mx-auto space-y-6 py-8">
         <Tag color="purple"><Sparkles size={12} /> POWER USER MODE</Tag>
-        <h2 className="text-4xl font-black">Make it perfect.</h2>
-        <p className="text-slate-300 text-lg">Two short assessments — one about what you really need in this role, one about your culture. Either is optional.</p>
+        <h2 className="text-4xl font-black font-display">Make it perfect.</h2>
+        <p className="text-stone-700 text-lg">Two short assessments — one about what you really need in this role, one about your culture. Either is optional.</p>
         <div className="grid sm:grid-cols-2 gap-3">
-          <Card className="hover:border-yellow-400/40 cursor-pointer" onClick={() => setStage("skill")}>
-            <BarChart3 className="text-yellow-400 mb-3" />
+          <Card className="hover:border-yellow-300 cursor-pointer" onClick={() => setStage("skill")}>
+            <BarChart3 className="text-amber-500 mb-3" />
             <div className="font-bold text-lg">A: Skill Spec</div>
-            <div className="text-sm text-slate-400 mt-1">12 statements about what you're really hiring for. Re-weights match scores.</div>
+            <div className="text-sm text-stone-500 mt-1">12 statements about what you're really hiring for. Re-weights match scores.</div>
           </Card>
           <Card className="hover:border-violet-400/40 cursor-pointer" onClick={() => setStage("culture")}>
-            <Users className="text-violet-400 mb-3" />
+            <Users className="text-violet-700 mb-3" />
             <div className="font-bold text-lg">B: Culture</div>
-            <div className="text-sm text-slate-400 mt-1">12 statements about how you work. Adds a culture-fit subscore.</div>
+            <div className="text-sm text-stone-500 mt-1">12 statements about how you work. Adds a culture-fit subscore.</div>
           </Card>
         </div>
         <div className="flex justify-between pt-4">
@@ -1959,14 +1959,14 @@ function DeepDive({ onComplete, onSkip }) {
         </div>
         {!isCulture && page === totalPages - 1 && (
           <div className="text-center text-sm">
-            <button onClick={() => { setSkipSkill(true); setStage("culture"); setPage(0); }} className="text-slate-400 hover:text-yellow-400 underline underline-offset-4">
+            <button onClick={() => { setSkipSkill(true); setStage("culture"); setPage(0); }} className="text-stone-500 hover:text-amber-500 underline underline-offset-4">
               Skip this assessment
             </button>
           </div>
         )}
         {isCulture && page === totalPages - 1 && (
           <div className="text-center text-sm">
-            <button onClick={() => onComplete(skipSkill ? null : skillScores, null)} className="text-slate-400 hover:text-yellow-400 underline underline-offset-4">
+            <button onClick={() => onComplete(skipSkill ? null : skillScores, null)} className="text-stone-500 hover:text-amber-500 underline underline-offset-4">
               Skip culture, just use skill spec
             </button>
           </div>
@@ -2009,7 +2009,7 @@ function ShortlistsView({ shortlists, setShortlists, onOpenCandidate }) {
                   <Avatar candidate={c} size={40} />
                   <div className="flex-1 min-w-0">
                     <div className="font-bold truncate">{c.firstName} {c.lastName}</div>
-                    <div className="text-xs text-slate-400 truncate">{c.currentRole} · {c.location}</div>
+                    <div className="text-xs text-stone-500 truncate">{c.currentRole} · {c.location}</div>
                   </div>
                   {c.archetype && <ArchetypeBadge quad={c.archetype} />}
                 </div>
@@ -2023,11 +2023,11 @@ function ShortlistsView({ shortlists, setShortlists, onOpenCandidate }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-black">My Shortlists</h2>
+        <h2 className="text-3xl font-black font-display">My Shortlists</h2>
         <Button icon={Plus} onClick={() => setCreating(true)}>New shortlist</Button>
       </div>
       {creating && (
-        <Card className="border-yellow-400/40">
+        <Card className="border-yellow-300">
           <Field label="Shortlist name" required><Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="VP Eng top 5" /></Field>
           <div className="flex gap-2 mt-3">
             <Button size="sm" onClick={createNew}>Create</Button>
@@ -2039,18 +2039,18 @@ function ShortlistsView({ shortlists, setShortlists, onOpenCandidate }) {
         {shortlists.map(s => (
           <Card key={s.id} onClick={() => setActive(s.id)}>
             <div className="font-bold text-lg">{s.name}</div>
-            <div className="text-xs text-slate-400 mt-1">{s.candidateIds.length} candidates · {s.createdAt}</div>
-            {s.notes && <div className="text-xs text-slate-500 mt-2 italic">"{s.notes}"</div>}
+            <div className="text-xs text-stone-500 mt-1">{s.candidateIds.length} candidates · {s.createdAt}</div>
+            {s.notes && <div className="text-xs text-stone-500 mt-2 italic">"{s.notes}"</div>}
             <div className="flex -space-x-2 mt-3">
               {s.candidateIds.slice(0, 5).map(id => {
                 const c = DATA_BUNDLE.candidates.find(c => c.id === id);
                 if (!c) return null;
-                return <div key={id} className="ring-2 ring-slate-900 rounded-full"><Avatar candidate={c} size={28} /></div>;
+                return <div key={id} className="ring-2 ring-white rounded-full"><Avatar candidate={c} size={28} /></div>;
               })}
             </div>
           </Card>
         ))}
-        {shortlists.length === 0 && <Card className="text-center py-8"><Star className="text-slate-500 mx-auto mb-2" /><div className="text-sm">No shortlists yet</div></Card>}
+        {shortlists.length === 0 && <Card className="text-center py-8"><Star className="text-stone-500 mx-auto mb-2" /><div className="text-sm">No shortlists yet</div></Card>}
       </div>
     </div>
   );
@@ -2059,25 +2059,25 @@ function ShortlistsView({ shortlists, setShortlists, onOpenCandidate }) {
 function SavedSearchesView({ searches, onRunSearch, setSearches }) {
   return (
     <div className="space-y-4">
-      <h2 className="text-3xl font-black">My Searches</h2>
+      <h2 className="text-3xl font-black font-display">My Searches</h2>
       <Card padded={false}>
         <table className="w-full">
-          <thead className="bg-slate-900/60 border-b border-slate-800 text-xs uppercase tracking-wider text-slate-500">
+          <thead className="bg-stone-50 border-b border-stone-200 text-xs uppercase tracking-wider text-stone-500">
             <tr><th className="text-left p-3">Name</th><th className="text-left p-3 hidden sm:table-cell">Query</th><th className="text-left p-3 hidden md:table-cell">Saved</th><th className="text-left p-3">Results</th><th className="p-3"></th></tr>
           </thead>
           <tbody>
             {searches.map(s => (
-              <tr key={s.id} className="border-b border-slate-800/60 hover:bg-slate-900/40">
+              <tr key={s.id} className="border-b border-stone-200 hover:bg-stone-50 border border-stone-200">
                 <td className="p-3 font-bold">{s.name}</td>
-                <td className="p-3 text-xs text-slate-400 line-clamp-2 hidden sm:table-cell max-w-md">{s.query}</td>
-                <td className="p-3 text-xs text-slate-500 hidden md:table-cell">{s.createdAt}</td>
+                <td className="p-3 text-xs text-stone-500 line-clamp-2 hidden sm:table-cell max-w-md">{s.query}</td>
+                <td className="p-3 text-xs text-stone-500 hidden md:table-cell">{s.createdAt}</td>
                 <td className="p-3 text-sm tabular-nums">{s.results || "—"}</td>
                 <td className="p-3 text-right">
                   <Button size="sm" variant="ghost" icon={Search} onClick={() => onRunSearch(s.query)}>Run</Button>
                 </td>
               </tr>
             ))}
-            {searches.length === 0 && <tr><td colSpan={5} className="p-8 text-center text-slate-500 text-sm">No saved searches yet.</td></tr>}
+            {searches.length === 0 && <tr><td colSpan={5} className="p-8 text-center text-stone-500 text-sm">No saved searches yet.</td></tr>}
           </tbody>
         </table>
       </Card>
@@ -2099,21 +2099,21 @@ function AdminPortal({ onExit }) {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex">
+    <div className="min-h-screen bg-white text-black flex">
       {/* Sidebar */}
-      <aside className="w-60 border-r border-slate-800 p-4 flex-shrink-0 space-y-1 hidden md:block">
-        <button onClick={onExit} className="flex items-center gap-2 mb-6 hover:text-yellow-400">
-          <Zap className="text-yellow-400 fill-yellow-400" size={18} />
+      <aside className="w-60 border-r border-stone-200 p-4 flex-shrink-0 space-y-1 hidden md:block">
+        <button onClick={onExit} className="flex items-center gap-2 mb-6 hover:text-amber-500">
+          <Zap className="text-amber-500 fill-yellow-400" size={18} />
           <span className="font-black">Lighthouse</span>
-          <span className="text-slate-500 text-xs">Admin</span>
+          <span className="text-stone-500 text-xs">Admin</span>
         </button>
-        <div className="text-[10px] uppercase tracking-wider text-slate-600 font-bold pt-2 pb-1 px-2">Existing</div>
+        <div className="text-[10px] uppercase tracking-wider text-stone-400 font-bold pt-2 pb-1 px-2">Existing</div>
         {[
           ["💬", "Applications"], ["👥", "Founders"], ["💼", "Companies"], ["💰", "Investors"],
         ].map(([i, l]) => (
-          <div key={l} className="px-2 py-1.5 text-sm text-slate-500 cursor-default">{i}  {l}</div>
+          <div key={l} className="px-2 py-1.5 text-sm text-stone-500 cursor-default">{i}  {l}</div>
         ))}
-        <div className="text-[10px] uppercase tracking-wider text-yellow-400 font-bold pt-3 pb-1 px-2">Talent</div>
+        <div className="text-[10px] uppercase tracking-wider text-amber-500 font-bold pt-3 pb-1 px-2">Talent</div>
         {[
           { k: "database", l: "Database", icon: Database },
           { k: "applications", l: "Pending", icon: KanbanSquare },
@@ -2122,31 +2122,31 @@ function AdminPortal({ onExit }) {
           { k: "settings", l: "Settings", icon: Settings },
         ].map(it => (
           <button key={it.k} onClick={() => setView(it.k)}
-                  className={`w-full text-left flex items-center gap-2 px-2 py-1.5 text-sm rounded-lg transition ${view === it.k ? "bg-yellow-400/10 text-yellow-400" : "text-slate-300 hover:bg-slate-900"}`}>
+                  className={`w-full text-left flex items-center gap-2 px-2 py-1.5 text-sm rounded-lg transition ${view === it.k ? "bg-yellow-100 text-amber-500" : "text-stone-700 hover:bg-white border border-stone-200"}`}>
             <it.icon size={14} /> {it.l}
             {it.k === "archetypeMap" && <Tag color="purple" size="sm">opt</Tag>}
           </button>
         ))}
-        <div className="text-[10px] uppercase tracking-wider text-slate-600 font-bold pt-3 pb-1 px-2">Other</div>
+        <div className="text-[10px] uppercase tracking-wider text-stone-400 font-bold pt-3 pb-1 px-2">Other</div>
         {[
           ["📨", "Emails"], ["⚙️", "Settings"]
         ].map(([i, l]) => (
-          <div key={l} className="px-2 py-1.5 text-sm text-slate-500 cursor-default">{i}  {l}</div>
+          <div key={l} className="px-2 py-1.5 text-sm text-stone-500 cursor-default">{i}  {l}</div>
         ))}
       </aside>
       {/* Main */}
       <main className="flex-1 min-w-0">
-        <div className="border-b border-slate-800 px-6 py-3 flex items-center justify-between">
+        <div className="border-b border-stone-200 px-6 py-3 flex items-center justify-between">
           <div className="text-sm">
-            <span className="text-yellow-400 font-bold">🎯 Talent</span>
-            <span className="text-slate-500 mx-2">/</span>
+            <span className="text-amber-500 font-bold">🎯 Talent</span>
+            <span className="text-stone-500 mx-2">/</span>
             <span className="font-semibold">{
               { database: "Database", applications: "Pending Applications", archetypeMap: "Archetype Map", hiringRequests: "Hiring Requests", settings: "Settings", profile: "Candidate" }[view]
             }</span>
           </div>
           <div className="flex items-center gap-3">
-            <Bell size={16} className="text-slate-400" />
-            <div className="text-xs text-slate-400">Zap</div>
+            <Bell size={16} className="text-stone-500" />
+            <div className="text-xs text-stone-500">Zap</div>
             <Button variant="ghost" size="sm" icon={LogOut} onClick={onExit}>Exit</Button>
           </div>
         </div>
@@ -2204,7 +2204,7 @@ function AdminDatabase({ candidates, onOpen }) {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h2 className="text-2xl font-black">Talent Database</h2>
-          <div className="text-xs text-slate-500">{candidates.length} candidates total</div>
+          <div className="text-xs text-stone-500">{candidates.length} candidates total</div>
         </div>
         <div className="flex flex-wrap gap-2">
           <Input placeholder="Search name, role, skills..." value={search} onChange={e => setSearch(e.target.value)} className="text-xs w-56" />
@@ -2226,7 +2226,7 @@ function AdminDatabase({ candidates, onOpen }) {
       <Card padded={false}>
         <div className="overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="bg-slate-900/60 border-b border-slate-800 text-[10px] uppercase tracking-wider text-slate-500">
+          <thead className="bg-stone-50 border-b border-stone-200 text-[10px] uppercase tracking-wider text-stone-500">
             <tr>
               <SortHeader sortKey="lastName" label="Name" sort={sort} setSort={setSort} />
               <SortHeader sortKey="currentRole" label="Role" sort={sort} setSort={setSort} />
@@ -2240,26 +2240,26 @@ function AdminDatabase({ candidates, onOpen }) {
           </thead>
           <tbody>
             {filtered.slice(0, 100).map(c => (
-              <tr key={c.id} onClick={() => onOpen(c.id)} className="border-b border-slate-800/60 hover:bg-slate-900/40 cursor-pointer">
+              <tr key={c.id} onClick={() => onOpen(c.id)} className="border-b border-stone-200 hover:bg-stone-50 border border-stone-200 cursor-pointer">
                 <td className="p-3">
                   <div className="flex items-center gap-2">
                     <Avatar candidate={c} size={28} />
                     <div className="font-bold">{c.firstName} {c.lastName}</div>
                   </div>
                 </td>
-                <td className="p-3 text-slate-300 max-w-xs truncate">{c.currentRole}</td>
-                <td className="p-3">{c.archetype ? <ArchetypeBadge quad={c.archetype} /> : <span className="text-slate-600">—</span>}</td>
-                <td className="p-3 text-xs text-slate-400">{c.dateApplied}</td>
+                <td className="p-3 text-stone-700 max-w-xs truncate">{c.currentRole}</td>
+                <td className="p-3">{c.archetype ? <ArchetypeBadge quad={c.archetype} /> : <span className="text-stone-400">—</span>}</td>
+                <td className="p-3 text-xs text-stone-500">{c.dateApplied}</td>
                 <td className="p-3"><StatusPill status={c.vettingStatus} /></td>
-                <td className="p-3 text-xs text-slate-400">{c.lastActivity}</td>
+                <td className="p-3 text-xs text-stone-500">{c.lastActivity}</td>
                 <td className="p-3 text-center text-sm tabular-nums">{c.introRequests}</td>
-                <td className="p-3 text-center">{c.placements > 0 && <span className="text-emerald-400 text-lg">✓</span>}</td>
+                <td className="p-3 text-center">{c.placements > 0 && <span className="text-emerald-600 text-lg">✓</span>}</td>
               </tr>
             ))}
           </tbody>
         </table>
         </div>
-        {filtered.length > 100 && <div className="p-3 text-center text-xs text-slate-500">Showing 100 of {filtered.length} candidates. Refine filters to see more.</div>}
+        {filtered.length > 100 && <div className="p-3 text-center text-xs text-stone-500">Showing 100 of {filtered.length} candidates. Refine filters to see more.</div>}
       </Card>
     </div>
   );
@@ -2292,7 +2292,7 @@ function AdminPending({ candidates, onOpen, updateCandidate }) {
   return (
     <div>
       <h2 className="text-2xl font-black mb-1">Pending Applications</h2>
-      <div className="text-xs text-slate-500 mb-4">Drag candidates through the pipeline. Click a card for the full admin profile.</div>
+      <div className="text-xs text-stone-500 mb-4">Drag candidates through the pipeline. Click a card for the full admin profile.</div>
       <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
         {cols.map(col => {
           const list = candidates.filter(c => c.vettingStatus === col);
@@ -2300,26 +2300,26 @@ function AdminPending({ candidates, onOpen, updateCandidate }) {
             <div key={col}
                  onDragOver={e => e.preventDefault()}
                  onDrop={() => { if (drag) { moveStatus(drag, col); setDrag(null); } }}
-                 className="bg-slate-900/60 border border-slate-800 rounded-xl p-3 min-h-[300px]">
+                 className="bg-stone-50 border border-stone-200 rounded-xl p-3 min-h-[300px]">
               <div className="flex items-center justify-between mb-3">
-                <div className="text-xs uppercase tracking-wider font-bold text-slate-300">{labels[col]}</div>
+                <div className="text-xs uppercase tracking-wider font-bold text-stone-700">{labels[col]}</div>
                 <Tag>{list.length}</Tag>
               </div>
               <div className="space-y-2">
                 {list.slice(0, 25).map(c => (
                   <div key={c.id} draggable onDragStart={() => setDrag(c.id)} onClick={() => onOpen(c.id)}
-                       className="bg-slate-950 border border-slate-800 rounded-lg p-2 cursor-pointer hover:border-yellow-400/40">
+                       className="bg-white border border-stone-200 rounded-lg p-2 cursor-pointer hover:border-yellow-300">
                     <div className="flex items-center gap-2">
                       <Avatar candidate={c} size={26} />
                       <div className="min-w-0 flex-1">
                         <div className="font-bold text-xs truncate">{c.firstName} {c.lastName}</div>
-                        <div className="text-[10px] text-slate-500 truncate">{c.currentRole}</div>
+                        <div className="text-[10px] text-stone-500 truncate">{c.currentRole}</div>
                       </div>
                     </div>
                     {c.archetype && <div className="mt-1.5"><ArchetypeBadge quad={c.archetype} /></div>}
                   </div>
                 ))}
-                {list.length > 25 && <div className="text-center text-[10px] text-slate-500 pt-2">+{list.length - 25} more</div>}
+                {list.length > 25 && <div className="text-center text-[10px] text-stone-500 pt-2">+{list.length - 25} more</div>}
               </div>
             </div>
           );
@@ -2349,11 +2349,11 @@ function AdminCandidateProfile({ candidate, onBack, updateCandidate }) {
               {candidate.archetype && <ArchetypeBadge quad={candidate.archetype} />}
               <StatusPill status={candidate.vettingStatus} />
             </div>
-            <div className="text-slate-400 text-sm">{candidate.currentRole} · {candidate.currentCompany}</div>
-            <div className="text-xs text-slate-500 mt-1 flex flex-wrap gap-3">
+            <div className="text-stone-500 text-sm">{candidate.currentRole} · {candidate.currentCompany}</div>
+            <div className="text-xs text-stone-500 mt-1 flex flex-wrap gap-3">
               <span><Mail size={11} className="inline mr-0.5" /> {candidate.email}</span>
               <span><Phone size={11} className="inline mr-0.5" /> {candidate.phone}</span>
-              <a href={candidate.linkedin} target="_blank" rel="noreferrer" className="hover:text-yellow-400"><Linkedin size={11} className="inline mr-0.5" /> LinkedIn</a>
+              <a href={candidate.linkedin} target="_blank" rel="noreferrer" className="hover:text-amber-500"><Linkedin size={11} className="inline mr-0.5" /> LinkedIn</a>
             </div>
           </div>
           <div className="flex flex-col gap-2 w-full md:w-auto">
@@ -2366,45 +2366,45 @@ function AdminCandidateProfile({ candidate, onBack, updateCandidate }) {
       <div className="grid md:grid-cols-3 gap-4">
         <div className="md:col-span-2 space-y-4">
           <Card>
-            <div className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-3">Their submission</div>
+            <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-3">Their submission</div>
             <div className="space-y-3 text-sm">
-              <div><div className="font-bold">Why startup?</div><div className="text-slate-300">{candidate.whyStartup}</div></div>
-              <div><div className="font-bold">Roles wanted</div><div className="text-slate-300">{candidate.roleSummary}</div></div>
-              <div><div className="font-bold">Has prior startup exp?</div><div className="text-slate-300">{candidate.startupExperience ? "Yes" : "No"}</div></div>
-              {candidate.vibe && <div><div className="font-bold">Karaoke</div><div className="text-slate-300">🎵 {candidate.vibe.karaoke}</div></div>}
+              <div><div className="font-bold">Why startup?</div><div className="text-stone-700">{candidate.whyStartup}</div></div>
+              <div><div className="font-bold">Roles wanted</div><div className="text-stone-700">{candidate.roleSummary}</div></div>
+              <div><div className="font-bold">Has prior startup exp?</div><div className="text-stone-700">{candidate.startupExperience ? "Yes" : "No"}</div></div>
+              {candidate.vibe && <div><div className="font-bold">Karaoke</div><div className="text-stone-700">🎵 {candidate.vibe.karaoke}</div></div>}
             </div>
           </Card>
           {candidate.archetype && candidate.archetypeXY && (
             <Card>
-              <div className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-3">Archetype profile</div>
+              <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-3">Archetype profile</div>
               <ArchetypePlot candidates={DATA_BUNDLE.candidates.filter(c => c.hasAssessment)} highlight={candidate} height={260} />
             </Card>
           )}
           <Card>
-            <div className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-3">Skills & history</div>
+            <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-3">Skills & history</div>
             <div className="flex flex-wrap gap-1 mb-3">{candidate.skills.map(s => <Tag key={s}>{s}</Tag>)}</div>
             <div className="space-y-1.5 text-xs">
-              {candidate.workHistory.map((w, i) => <div key={i} className="text-slate-300"><b>{w.title}</b> @ {w.company} <span className="text-slate-500">({w.startYear}–{w.endYear})</span></div>)}
+              {candidate.workHistory.map((w, i) => <div key={i} className="text-stone-700"><b>{w.title}</b> @ {w.company} <span className="text-stone-500">({w.startYear}–{w.endYear})</span></div>)}
             </div>
           </Card>
         </div>
         <div className="space-y-4">
-          <Card className="border-violet-400/30">
-            <div className="text-xs uppercase tracking-wider text-violet-400 font-bold mb-2 flex items-center gap-1"><Shield size={12} /> Zap's private notes</div>
+          <Card className="border-violet-300">
+            <div className="text-xs uppercase tracking-wider text-violet-700 font-bold mb-2 flex items-center gap-1"><Shield size={12} /> Zap's private notes</div>
             <Textarea rows={6} value={notes} onChange={e => setNotes(e.target.value)} className="text-xs" placeholder="Vetting notes, growth areas, red flags..." />
-            <div className="text-[10px] text-slate-500 mt-1">Visible to Zap and Mike only. Never shown to companies.</div>
+            <div className="text-[10px] text-stone-500 mt-1">Visible to Zap and Mike only. Never shown to companies.</div>
           </Card>
           <Card>
-            <div className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-2">Vetting status</div>
+            <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-2">Vetting status</div>
             <Select value={vetting} onChange={setVetting} options={["New", "Reviewing", "Vetting Call Scheduled", "Active", "Hidden", "Declined"]} />
           </Card>
           <Card>
-            <div className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-2">Activity</div>
+            <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-2">Activity</div>
             <div className="space-y-1.5 text-xs">
-              <div className="flex justify-between"><span className="text-slate-400">Intro requests</span><span className="font-bold">{candidate.introRequests}</span></div>
-              <div className="flex justify-between"><span className="text-slate-400">Placements</span><span className="font-bold">{candidate.placements}</span></div>
-              <div className="flex justify-between"><span className="text-slate-400">Last activity</span><span>{candidate.lastActivity}</span></div>
-              <div className="flex justify-between"><span className="text-slate-400">Date applied</span><span>{candidate.dateApplied}</span></div>
+              <div className="flex justify-between"><span className="text-stone-500">Intro requests</span><span className="font-bold">{candidate.introRequests}</span></div>
+              <div className="flex justify-between"><span className="text-stone-500">Placements</span><span className="font-bold">{candidate.placements}</span></div>
+              <div className="flex justify-between"><span className="text-stone-500">Last activity</span><span>{candidate.lastActivity}</span></div>
+              <div className="flex justify-between"><span className="text-stone-500">Date applied</span><span>{candidate.dateApplied}</span></div>
             </div>
           </Card>
           <Button className="w-full" onClick={save} icon={Save}>Save changes</Button>
@@ -2433,7 +2433,7 @@ function AdminArchetypeMap({ candidates, onOpen }) {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h2 className="text-2xl font-black">Archetype Map</h2>
-          <div className="text-xs text-slate-500">{filtered.length} of {candidates.length} candidates have completed the assessment.</div>
+          <div className="text-xs text-stone-500">{filtered.length} of {candidates.length} candidates have completed the assessment.</div>
         </div>
         <div className="flex gap-2">
           <Input placeholder="Filter by skill..." value={filter.skill} onChange={e => setFilter({ ...filter, skill: e.target.value })} className="text-xs w-40" />
@@ -2447,7 +2447,7 @@ function AdminArchetypeMap({ candidates, onOpen }) {
         </Card>
         <div className="space-y-3">
           <Card>
-            <div className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-3">Distribution</div>
+            <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-3">Distribution</div>
             <div className="space-y-2">
               {Object.entries(ARCHETYPES).filter(([k]) => k !== "Balanced").map(([k, a]) => {
                 const v = distribution[k] || 0;
@@ -2455,15 +2455,15 @@ function AdminArchetypeMap({ candidates, onOpen }) {
                 return (
                   <div key={k}>
                     <div className="flex justify-between text-xs"><span>{a.icon} {k}</span><span className="font-bold">{v}</span></div>
-                    <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden mt-1"><div className="h-full" style={{ width: pct + "%", background: a.color }} /></div>
+                    <div className="h-1.5 bg-stone-100 rounded-full overflow-hidden mt-1"><div className="h-full" style={{ width: pct + "%", background: a.color }} /></div>
                   </div>
                 );
               })}
             </div>
           </Card>
-          <Card className="border-yellow-400/30">
-            <div className="text-xs uppercase tracking-wider text-yellow-400 font-bold mb-2 flex items-center gap-1"><Sparkles size={12} /> Insights</div>
-            <ul className="space-y-1 text-xs text-slate-300">
+          <Card className="border-yellow-300">
+            <div className="text-xs uppercase tracking-wider text-amber-500 font-bold mb-2 flex items-center gap-1"><Sparkles size={12} /> Insights</div>
+            <ul className="space-y-1 text-xs text-stone-700">
               {insights.map((s, i) => <li key={i} className="leading-relaxed">• {s}</li>)}
             </ul>
           </Card>
@@ -2483,16 +2483,16 @@ function AdminHiring() {
       <h2 className="text-2xl font-black">Hiring Requests</h2>
       <Card padded={false}>
         <table className="w-full text-sm">
-          <thead className="bg-slate-900/60 border-b border-slate-800 text-[10px] uppercase tracking-wider text-slate-500">
+          <thead className="bg-stone-50 border-b border-stone-200 text-[10px] uppercase tracking-wider text-stone-500">
             <tr><th className="text-left p-3">Company</th><th className="text-left p-3">Search</th><th className="text-left p-3">Stage</th><th className="text-left p-3">Last update</th><th className="text-center p-3">Results</th></tr>
           </thead>
           <tbody>
             {reqs.map(r => (
-              <tr key={r.id} className="border-b border-slate-800/60 hover:bg-slate-900/40">
+              <tr key={r.id} className="border-b border-stone-200 hover:bg-stone-50 border border-stone-200">
                 <td className="p-3 font-bold">{r.company.name}</td>
-                <td className="p-3 text-slate-300">{r.name}</td>
+                <td className="p-3 text-stone-700">{r.name}</td>
                 <td className="p-3"><Tag color="green">{r.company.stage}</Tag></td>
-                <td className="p-3 text-xs text-slate-500">{r.createdAt}</td>
+                <td className="p-3 text-xs text-stone-500">{r.createdAt}</td>
                 <td className="p-3 text-center font-bold">{r.results}</td>
               </tr>
             ))}
@@ -2500,7 +2500,7 @@ function AdminHiring() {
         </table>
       </Card>
       <h3 className="text-lg font-bold mt-6">Intro requests pending review</h3>
-      <Card><div className="text-sm text-slate-400">3 intros pending Zap's review. Each gets a personal warm intro — no auto-pings.</div></Card>
+      <Card><div className="text-sm text-stone-500">3 intros pending Zap's review. Each gets a personal warm intro — no auto-pings.</div></Card>
     </div>
   );
 }
@@ -2514,33 +2514,33 @@ function AdminSettings() {
     <div className="space-y-4">
       <h2 className="text-2xl font-black">Talent Settings</h2>
       <Card>
-        <div className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-3">Defaults</div>
+        <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-3">Defaults</div>
         <label className="flex items-center gap-2 text-sm cursor-pointer">
           <input type="checkbox" checked={autoPublish} onChange={e => setAutoPublish(e.target.checked)} className="accent-yellow-400" />
           <span>Auto-publish candidates upon vetting completion (default: hidden until vetted)</span>
         </label>
       </Card>
       <Card>
-        <div className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-3">Required intake fields</div>
+        <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-3">Required intake fields</div>
         <MultiSelectChips options={allFields} selected={requiredFields} onChange={setRequiredFields} />
       </Card>
       <Card>
-        <div className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-3">JD Templates ({DATA_BUNDLE.jdTemplates.length})</div>
+        <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-3">JD Templates ({DATA_BUNDLE.jdTemplates.length})</div>
         <div className="space-y-2">
           {DATA_BUNDLE.jdTemplates.map(jd => (
-            <div key={jd.id} className="bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs flex items-center justify-between">
-              <div><b>{jd.title}</b> <span className="text-slate-500">· {jd.stage} · {jd.industry}</span></div>
+            <div key={jd.id} className="bg-white border border-stone-200 rounded-lg p-2 text-xs flex items-center justify-between">
+              <div><b>{jd.title}</b> <span className="text-stone-500">· {jd.stage} · {jd.industry}</span></div>
               <Button size="sm" variant="ghost" icon={Edit3}>Edit</Button>
             </div>
           ))}
         </div>
         <Button size="sm" variant="secondary" icon={Plus} className="mt-3">Add JD template</Button>
       </Card>
-      <Card className="border-violet-400/20">
-        <div className="text-xs uppercase tracking-wider text-violet-400 font-bold mb-2 flex items-center gap-1">
+      <Card className="border-violet-200">
+        <div className="text-xs uppercase tracking-wider text-violet-700 font-bold mb-2 flex items-center gap-1">
           <Tag color="purple">OPTIONAL</Tag> Assessment settings
         </div>
-        <div className="text-sm text-slate-400 mb-3">Edit the 16 candidate archetype statements and the 12+12 company assessment statements. Changes affect future assessments only.</div>
+        <div className="text-sm text-stone-500 mb-3">Edit the 16 candidate archetype statements and the 12+12 company assessment statements. Changes affect future assessments only.</div>
         <Button size="sm" variant="secondary" icon={Edit3}>Edit archetype statements</Button>
       </Card>
     </div>
@@ -2562,37 +2562,37 @@ function ModeSwitcher({ mode, setMode, companyId, setCompanyId }) {
     <>
       {/* Trigger pill — bottom right */}
       <button onClick={() => setOpen(!open)}
-        className="fixed bottom-5 right-5 z-50 bg-yellow-400 text-slate-900 hover:bg-yellow-300 rounded-full pl-3 pr-4 py-2.5 shadow-2xl flex items-center gap-2 font-bold text-sm transition-all">
-        <span className="w-7 h-7 bg-slate-900 rounded-full flex items-center justify-center"><Zap size={14} className="text-yellow-400 fill-yellow-400" /></span>
+        className="fixed bottom-5 right-5 z-50 bg-yellow-400 text-black hover:bg-yellow-300 rounded-full pl-3 pr-4 py-2.5 shadow-2xl flex items-center gap-2 font-bold text-sm transition-all">
+        <span className="w-7 h-7 bg-white border border-stone-200 rounded-full flex items-center justify-center"><Zap size={14} className="text-amber-500 fill-yellow-400" /></span>
         <span>Viewing: {current?.label || "—"}</span>
         <ChevronUp size={14} className={`transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="fixed bottom-20 right-5 z-50 w-80 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl p-2">
+          <div className="fixed bottom-20 right-5 z-50 w-80 bg-white border border-stone-300 rounded-2xl shadow-2xl p-2">
             <div className="p-3 pb-2">
-              <div className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-1">Switch view</div>
-              <div className="text-xs text-slate-400">Demo navigator — flip between the three sides of the platform.</div>
+              <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-1">Switch view</div>
+              <div className="text-xs text-stone-500">Demo navigator — flip between the three sides of the platform.</div>
             </div>
             {modes.map(m => (
               <button key={m.k} onClick={() => { setMode(m.k); setOpen(false); }}
-                className={`w-full text-left flex items-start gap-3 p-3 rounded-xl transition ${mode === m.k ? "bg-yellow-400/15 border border-yellow-400/30" : "hover:bg-slate-800/60 border border-transparent"}`}>
-                <m.icon size={20} className={mode === m.k ? "text-yellow-400" : "text-slate-400"} />
+                className={`w-full text-left flex items-start gap-3 p-3 rounded-xl transition ${mode === m.k ? "bg-yellow-100 border border-yellow-300" : "hover:bg-stone-100 border border-transparent"}`}>
+                <m.icon size={20} className={mode === m.k ? "text-amber-500" : "text-stone-500"} />
                 <div className="flex-1 min-w-0">
                   <div className="font-bold text-sm flex items-center gap-2">
                     {m.label}
                     {mode === m.k && <Tag color="yellow" size="sm">current</Tag>}
                   </div>
-                  <div className="text-xs text-slate-400 mt-0.5">{m.desc}</div>
+                  <div className="text-xs text-stone-500 mt-0.5">{m.desc}</div>
                 </div>
               </button>
             ))}
-            <div className="p-3 pt-2 mt-1 border-t border-slate-800">
-              <div className="text-[10px] uppercase tracking-wider text-slate-500 font-bold mb-1">Acting as company</div>
+            <div className="p-3 pt-2 mt-1 border-t border-stone-200">
+              <div className="text-[10px] uppercase tracking-wider text-stone-500 font-bold mb-1">Acting as company</div>
               <Select value={companyId} onChange={v => setCompanyId(+v)} className="text-xs"
                 options={DATA_BUNDLE.companies.map(c => ({ value: c.id, label: `${c.name} · ${c.stage}` }))} />
-              <div className="text-[10px] text-slate-500 mt-1.5">Affects which company's intros & shortlists you see in Company view.</div>
+              <div className="text-[10px] text-stone-500 mt-1.5">Affects which company's intros & shortlists you see in Company view.</div>
             </div>
           </div>
         </>
@@ -2626,22 +2626,22 @@ function IntrosView({ companyId, onOpenCandidate }) {
     <div className="space-y-4">
       <div>
         <div className="flex items-center gap-2">
-          <h2 className="text-3xl font-black">Intros from Zap</h2>
+          <h2 className="text-3xl font-black font-display">Intros from Zap</h2>
           <Tag color="yellow"><Sparkles size={10} /> Hand-picked</Tag>
         </div>
-        <div className="text-sm text-slate-400 mt-1">
+        <div className="text-sm text-stone-500 mt-1">
           Candidates Zap personally introduced to you, with her notes. Every intro is a warm one — there are no algorithmic auto-pings here.
         </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
         <button onClick={() => setFilter("all")}
-          className={`px-3 py-1.5 text-xs rounded-full border ${filter === "all" ? "bg-yellow-400 border-yellow-400 text-slate-900 font-bold" : "bg-slate-900 border-slate-700 text-slate-300"}`}>
+          className={`px-3 py-1.5 text-xs rounded-full border ${filter === "all" ? "bg-yellow-400 border-yellow-400 text-black font-bold" : "bg-white border border-stone-300 text-stone-700"}`}>
           All <span className="opacity-60">{myIntros.length}</span>
         </button>
         {Object.entries(INTRO_STATUS_META).map(([k, m]) => (
           <button key={k} onClick={() => setFilter(k)}
-            className={`px-3 py-1.5 text-xs rounded-full border flex items-center gap-1.5 ${filter === k ? "bg-yellow-400 border-yellow-400 text-slate-900 font-bold" : "bg-slate-900 border-slate-700 text-slate-300"}`}>
+            className={`px-3 py-1.5 text-xs rounded-full border flex items-center gap-1.5 ${filter === k ? "bg-yellow-400 border-yellow-400 text-black font-bold" : "bg-white border border-stone-300 text-stone-700"}`}>
             {m.label} <span className="opacity-60">{counts[k] || 0}</span>
           </button>
         ))}
@@ -2649,9 +2649,9 @@ function IntrosView({ companyId, onOpenCandidate }) {
 
       {filtered.length === 0 && (
         <Card className="text-center py-10">
-          <Coffee className="text-slate-500 mx-auto mb-2" size={28} />
+          <Coffee className="text-stone-500 mx-auto mb-2" size={28} />
           <div className="font-bold">No intros in this state yet.</div>
-          <div className="text-xs text-slate-500 mt-1">Zap sends every intro personally — they appear here as soon as they're made.</div>
+          <div className="text-xs text-stone-500 mt-1">Zap sends every intro personally — they appear here as soon as they're made.</div>
         </Card>
       )}
 
@@ -2661,7 +2661,7 @@ function IntrosView({ companyId, onOpenCandidate }) {
           if (!c) return null;
           const meta = INTRO_STATUS_META[intro.status];
           return (
-            <Card key={intro.id} className="hover:border-yellow-400/30 transition">
+            <Card key={intro.id} className="hover:border-yellow-300 transition">
               <div className="flex gap-4 items-start">
                 <Avatar candidate={c} size={56} />
                 <div className="flex-1 min-w-0">
@@ -2672,16 +2672,16 @@ function IntrosView({ companyId, onOpenCandidate }) {
                         {c.archetype && <ArchetypeBadge quad={c.archetype} />}
                         <Tag color={meta.color}>{meta.label}</Tag>
                       </div>
-                      <div className="text-sm text-slate-400 truncate">{c.currentRole} · {c.currentCompany}</div>
-                      <div className="text-xs text-slate-500 mt-1 flex items-center gap-3 flex-wrap">
+                      <div className="text-sm text-stone-500 truncate">{c.currentRole} · {c.currentCompany}</div>
+                      <div className="text-xs text-stone-500 mt-1 flex items-center gap-3 flex-wrap">
                         <span><Clock size={10} className="inline mr-0.5" /> {c.yearsExperience} yrs</span>
                         <span><MapPin size={10} className="inline mr-0.5" /> {c.location}</span>
                         <span><Calendar size={10} className="inline mr-0.5" /> Introduced {intro.introducedAt}</span>
                       </div>
                     </div>
                   </div>
-                  <div className="mt-3 bg-yellow-400/5 border-l-2 border-yellow-400 rounded-r-md p-3 text-sm italic text-slate-200">
-                    <div className="text-[10px] uppercase tracking-wider text-yellow-400 font-bold mb-1 not-italic">Zap's note</div>
+                  <div className="mt-3 bg-yellow-50 border-l-2 border-yellow-400 rounded-r-md p-3 text-sm italic text-stone-900">
+                    <div className="text-[10px] uppercase tracking-wider text-amber-500 font-bold mb-1 not-italic">Zap's note</div>
                     "{intro.note}"
                   </div>
                   <div className="flex flex-wrap gap-1 mt-3">{c.skills.slice(0, 5).map(s => <Tag key={s}>{s}</Tag>)}</div>
