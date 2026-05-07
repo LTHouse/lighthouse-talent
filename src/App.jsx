@@ -3039,11 +3039,11 @@ function ModeSwitcher({ mode, setMode, companyId, setCompanyId }) {
   const current = modes.find(m => m.k === mode);
   return (
     <>
-      {/* Trigger pill — solid dark navy with strong contrast */}
+      {/* Trigger pill — solid dark navy with strong contrast — always floating bottom-right */}
       <button onClick={() => setOpen(!open)}
         className="fixed bottom-5 right-5 z-50 bg-slate-900 text-yellow-300 hover:bg-slate-800 rounded-full pl-3 pr-4 py-2.5 shadow-2xl flex items-center gap-2 font-bold text-sm transition-all border border-slate-800">
         <span className="w-7 h-7 bg-yellow-400 rounded-full flex items-center justify-center"><Zap size={14} className="text-slate-900 fill-slate-900" /></span>
-        <span>Admin · {current?.label || "—"}</span>
+        <span>Demo · {current?.label || "—"}</span>
         <ChevronUp size={14} className={`transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
       {open && (
@@ -3051,8 +3051,8 @@ function ModeSwitcher({ mode, setMode, companyId, setCompanyId }) {
           <div className="fixed inset-0 z-40 bg-black/30" onClick={() => setOpen(false)} />
           <div className="fixed bottom-20 right-5 z-50 w-80 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl p-2 text-slate-100">
             <div className="p-3 pb-2">
-              <div className="text-xs uppercase tracking-wider text-yellow-300 font-bold mb-1">Admin · switch view</div>
-              <div className="text-xs text-slate-400">Flip between the four sides of the platform. Admin-only.</div>
+              <div className="text-xs uppercase tracking-wider text-yellow-300 font-bold mb-1">Demo navigator · switch view</div>
+              <div className="text-xs text-slate-400">Hop between the four sides of the platform without signing out. MVP / demo mode.</div>
             </div>
             {modes.map(m => (
               <button key={m.k} onClick={() => { setMode(m.k); setOpen(false); }}
@@ -3199,25 +3199,23 @@ export default function App() {
 
 function AuthedApp() {
   const { user, logout } = useAuth();
-  // Mode is admin-controlled only; non-admin roles are pinned to their own view.
-  const initialMode = user?.role === "admin" ? "candidate" : (user?.role || "candidate");
+  // In demo/MVP mode the ModeSwitcher is persistent for ALL signed-in users so we can
+  // hop between roles and gates without re-authenticating. The initial mode reflects the
+  // role the user signed in as (e.g. company@lt.house → company portal first).
+  const initialMode = user?.role === "admin" ? "candidate" : (user?.role === "talent" ? "candidate" : (user?.role || "candidate"));
   const [mode, setMode] = useState(initialMode);
   const [companyId, setCompanyId] = useState(user?.companyId || 5);
 
   if (!user) return <LoginScreen />;
 
-  // Role-based default routing — admins see the ModeSwitcher and can flip; others are pinned.
-  const isAdmin = user.role === "admin";
-  const effectiveMode = isAdmin ? mode : user.role;
-
   return (
     <>
-      {effectiveMode === "candidate" || effectiveMode === "talent" ? <CandidateIntakeFlow onExit={logout} /> : null}
-      {effectiveMode === "company" && <CompanyPortal preselectedCompanyId={companyId} onExit={logout} />}
-      {effectiveMode === "investor" && <InvestorComingSoon onExit={logout} />}
-      {effectiveMode === "admin" && <AdminPortal onExit={logout} />}
-      {/* ModeSwitcher only renders for admin users */}
-      {isAdmin && <ModeSwitcher mode={mode} setMode={setMode} companyId={companyId} setCompanyId={setCompanyId} />}
+      {(mode === "candidate" || mode === "talent") && <CandidateIntakeFlow onExit={logout} />}
+      {mode === "company" && <CompanyPortal preselectedCompanyId={companyId} onExit={logout} />}
+      {mode === "investor" && <InvestorComingSoon onExit={logout} />}
+      {mode === "admin" && <AdminPortal onExit={logout} />}
+      {/* Persistent ModeSwitcher — always visible during demo/MVP for fast cross-role testing */}
+      <ModeSwitcher mode={mode} setMode={setMode} companyId={companyId} setCompanyId={setCompanyId} />
     </>
   );
 }
