@@ -19,7 +19,7 @@ import {
 // ============================================================
 // DATA IMPORTS — 154 candidates, 18 companies, 93 intros, 24 jobs, 203 applications
 // ============================================================
-import { DATA_BUNDLE, INTROS, JOBS, APPLICATIONS } from './data.js';
+import { DATA_BUNDLE, INTROS, JOBS, APPLICATIONS, RESOURCES, INVESTORS, PORTFOLIOS, PROJECTS } from './data.js';
 import { AuthProvider, useAuth, LoginScreen } from './auth.jsx';
 
 // ============================================================
@@ -664,6 +664,7 @@ const SAMPLE_LINKEDIN_PROFILES = [
 function CandidateIntakeFlow({ onExit }) {
   const [step, setStep] = useState(0);
   const [showJobBoard, setShowJobBoard] = useState(false);
+  const [showResources, setShowResources] = useState(false);
   const [profile, setProfile] = useState({
     firstName: "", lastName: "", email: "", phone: "", linkedin: "",
     currentRole: "", currentCompany: "", yearsExperience: 5, location: "",
@@ -674,9 +675,28 @@ function CandidateIntakeFlow({ onExit }) {
     vibe: { nerdAbout: "", managerWords: "", futureSelfJoke: "", karaoke: "" },
     archetypeScores: null, archetype: null, archetypeXY: null, hasAssessment: false,
   });
-  // Early return AFTER all hooks are called (rules of hooks)
+  // Early returns AFTER all hooks are called (rules of hooks)
   if (showJobBoard) {
     return <TalentJobBoard onExit={() => setShowJobBoard(false)} />;
+  }
+  if (showResources) {
+    return (
+      <div className="min-h-screen bg-white text-black">
+        <div className="border-b border-stone-200 bg-white/95 backdrop-blur sticky top-0 z-30">
+          <div className="max-w-5xl mx-auto px-6 py-3 flex items-center justify-between">
+            <button onClick={() => setShowResources(false)} className="flex items-center gap-2 hover:text-amber-600">
+              <Zap className="text-amber-500 fill-amber-500" size={18} />
+              <span className="font-black tracking-tight">Lighthouse</span>
+              <span className="text-stone-500 text-xs">Talent · Resources</span>
+            </button>
+            <Button size="sm" variant="ghost" icon={ArrowLeft} onClick={() => setShowResources(false)}>Back</Button>
+          </div>
+        </div>
+        <div className="max-w-5xl mx-auto px-6 py-8">
+          <ResourcesView audience="talent" onExit={() => setShowResources(false)} />
+        </div>
+      </div>
+    );
   }
   function next() { setStep(s => Math.min(CANDIDATE_STEPS.length - 1, s + 1)); }
   function back() { setStep(s => Math.max(0, s - 1)); }
@@ -703,7 +723,7 @@ function CandidateIntakeFlow({ onExit }) {
         )}
       </div>
       <div className="max-w-3xl mx-auto px-6 py-10">
-        {step === 0 && <CandidateLanding onStart={next} onBrowseJobs={() => setShowJobBoard(true)} />}
+        {step === 0 && <CandidateLanding onStart={next} onBrowseJobs={() => setShowJobBoard(true)} onBrowseResources={() => setShowResources(true)} />}
         {step === 1 && <ConnectCareer profile={profile} update={update} onNext={next} onBack={back} />}
         {step === 2 && <ReviewProfile profile={profile} update={update} onNext={next} onBack={back} />}
         {step === 3 && <BasicsForm profile={profile} update={update} onNext={next} onBack={back} />}
@@ -721,7 +741,7 @@ function CandidateIntakeFlow({ onExit }) {
   );
 }
 
-function CandidateLanding({ onStart, onBrowseJobs }) {
+function CandidateLanding({ onStart, onBrowseJobs, onBrowseResources }) {
   return (
     <div className="space-y-8">
       <div className="text-center mb-2">
@@ -759,13 +779,18 @@ function CandidateLanding({ onStart, onBrowseJobs }) {
         <div className="text-xs text-stone-500">
           A few minutes. Optional archetype dive available at the end.
         </div>
-        {onBrowseJobs && (
-          <div className="pt-2">
+        <div className="pt-2 flex flex-col sm:flex-row gap-4 items-center justify-center">
+          {onBrowseJobs && (
             <button onClick={onBrowseJobs} className="text-sm text-stone-700 hover:text-amber-600 underline underline-offset-4">
               Or browse open jobs first →
             </button>
-          </div>
-        )}
+          )}
+          {onBrowseResources && (
+            <button onClick={onBrowseResources} className="text-sm text-stone-700 hover:text-amber-600 underline underline-offset-4">
+              Read about startup life, comp & equity →
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -1333,6 +1358,9 @@ function CompanyPortal({ onExit, preselectedCompanyId }) {
             onOpenProfile={(id) => { setActiveId(id); setView("profile"); }}
             companyId={me} shortlists={shortlists} setShortlists={setShortlists} />
         )}
+        {view === "resources" && (
+          <ResourcesView audience="company" onExit={onExit} />
+        )}
       </div>
     </div>
   );
@@ -1355,6 +1383,7 @@ function CompanyShellHeader({ company, onExit, setView, view }) {
               { k: "intros", l: "Intros", icon: Coffee },
               { k: "searches", l: "My Searches", icon: BookOpenCheck },
               { k: "shortlists", l: "Shortlists", icon: Star },
+              { k: "resources", l: "Resources", icon: FileText },
             ].map(it => (
               <button key={it.k} onClick={() => setView(it.k)}
                       className={`px-3 py-1.5 text-sm rounded-lg transition flex items-center gap-1.5 ${view === it.k ? "bg-stone-100 text-amber-500" : "text-stone-500 hover:text-black"}`}>
@@ -2152,7 +2181,9 @@ function AdminPortal({ onExit }) {
           { k: "database", l: "Database", icon: Database },
           { k: "applications", l: "Pending", icon: KanbanSquare },
           { k: "jobBoard", l: "Job Board", icon: Briefcase },
+          { k: "investors", l: "Investors", icon: Building2 },
           { k: "archetypeMap", l: "Archetype Map", icon: Map },
+          { k: "resources", l: "Resources", icon: FileText },
           { k: "hiringRequests", l: "Hiring Requests", icon: BookOpenCheck },
           { k: "settings", l: "Settings", icon: Settings },
         ].map(it => (
@@ -2191,6 +2222,8 @@ function AdminPortal({ onExit }) {
           {view === "archetypeMap" && <AdminArchetypeMap candidates={candidates} onOpen={(id) => { setActiveId(id); setView("profile"); }} />}
           {view === "hiringRequests" && <AdminHiring />}
           {view === "jobBoard" && <AdminJobBoard onOpenCandidate={(id) => { setActiveId(id); setView("profile"); }} />}
+          {view === "resources" && <ResourcesView audience="all" onExit={onExit} />}
+          {view === "investors" && <AdminInvestorsView />}
           {view === "settings" && <AdminSettings />}
           {view === "profile" && (
             <AdminCandidateProfile
@@ -3025,6 +3058,642 @@ function AdminJobBoard({ onOpenCandidate }) {
 }
 
 // ============================================================
+// 12 ARCHETYPES — sub-zone names per the v2 spec.
+// Same 2D quadrant model. Sub-zone resolution from primaryRole until full 24-statement assessment lands.
+// ============================================================
+const ARCHETYPES_12 = {
+  // Specialist + Builder
+  "Founding Engineer":  { quad: "Pioneer",      icon: "⚡", desc: ["Technical depth, pre-product builder", "Best fit: pre-seed to seed", "Typical roles: Founding Engineer, ML Engineer, Infra Lead"], color: "#FACC15" },
+  "Founding Designer":  { quad: "Pioneer",      icon: "🎨", desc: ["Design-led specialist builder, first design hire", "Best fit: pre-seed to Series A", "Typical roles: Founding Designer, Brand Lead"], color: "#FB923C" },
+  "Domain Founder":     { quad: "Pioneer",      icon: "🔭", desc: ["Specialist with founder ambition", "Best fit: pre-seed", "Typical roles: Domain Founder, Technical Co-founder"], color: "#F97316" },
+  // Generalist + Builder
+  "Founder/CEO Type":   { quad: "Founder",      icon: "🚀", desc: ["Comfortable in chaos, wears every hat, decides with incomplete info", "Best fit: pre-seed", "Typical roles: Founder, CEO, Co-founder"], color: "#FB923C" },
+  "Founding Operator":  { quad: "Founder",      icon: "🛠️", desc: ["Generalist building the operating layer", "Best fit: seed", "Typical roles: First Ops Hire, Founding GM"], color: "#F59E0B" },
+  "First Business Hire":{ quad: "Founder",      icon: "🎯", desc: ["Generalist builder for non-technical roles", "Best fit: seed to Series A", "Typical roles: First Marketing/Sales/CS hire"], color: "#FCD34D" },
+  // Specialist + Operator
+  "Senior IC":          { quad: "Craftsperson", icon: "🔬", desc: ["Deep specialist optimizer; principal-level individual contributor", "Best fit: Series A through B+", "Typical roles: Staff Engineer, Senior IC"], color: "#7DD3FC" },
+  "Domain Lead":        { quad: "Craftsperson", icon: "🧭", desc: ["Specialist who leads a function from in front", "Best fit: Series A+", "Typical roles: Engineering Lead, Design Lead"], color: "#38BDF8" },
+  "Player-Coach":       { quad: "Craftsperson", icon: "🤝", desc: ["Specialist operator who manages while doing the work", "Best fit: Series A through B", "Typical roles: Lead/Manager Eng, Lead Designer"], color: "#0EA5E9" },
+  // Generalist + Operator
+  "Chief of Staff":     { quad: "Athlete",      icon: "🎯", desc: ["Connects functions, runs founder priorities, cross-team execution", "Best fit: Series A through B", "Typical roles: Chief of Staff, BizOps Lead"], color: "#A78BFA" },
+  "Head of Ops":        { quad: "Athlete",      icon: "⚙️", desc: ["Generalist operator focused on the operating system", "Best fit: Series A through B+", "Typical roles: Head of Ops, VP Ops, COO"], color: "#8B5CF6" },
+  "Functional Lead":    { quad: "Athlete",      icon: "📐", desc: ["Generalist running a non-technical function", "Best fit: Series A through B", "Typical roles: Head of Marketing/Sales/CS"], color: "#7C3AED" },
+  // Center
+  "Balanced":           { quad: "Balanced",     icon: "⚖️", desc: ["Sits near the center of the map", "Versatile across modes", "Typical roles: varies"], color: "#94A3B8" },
+};
+
+// Derive a v2 sub-zone name from existing v1 quadrant + primary role.
+function archetype12FromCandidate(c) {
+  if (!c.archetype) return null;
+  const q = c.archetype;
+  const r = c.primaryRole;
+  if (q === "Balanced") return "Balanced";
+  if (q === "Pioneer") {
+    if (r === "Engineering") return "Founding Engineer";
+    if (r === "Design") return "Founding Designer";
+    return "Domain Founder";
+  }
+  if (q === "Founder") {
+    if (r === "Engineering" || r === "Founding Team") return "Founder/CEO Type";
+    if (r === "Operations") return "Founding Operator";
+    return "First Business Hire";
+  }
+  if (q === "Craftsperson") {
+    if (r === "Engineering") return "Senior IC";
+    if (r === "Operations" || r === "Marketing" || r === "Sales") return "Domain Lead";
+    return "Player-Coach";
+  }
+  if (q === "Athlete") {
+    if (r === "Operations") return c.yearsExperience >= 10 ? "Head of Ops" : "Chief of Staff";
+    if (r === "Marketing" || r === "Sales") return "Functional Lead";
+    return "Chief of Staff";
+  }
+  return null;
+}
+
+function Archetype12Badge({ name, size = "sm" }) {
+  if (!name) return null;
+  const a = ARCHETYPES_12[name];
+  if (!a) return null;
+  return (
+    <span style={{ background: a.color + "22", borderColor: a.color + "55", color: a.color }}
+          className={`inline-flex items-center gap-1 rounded-full border ${size === "lg" ? "px-3 py-1 text-sm" : "px-2 py-0.5 text-xs"} font-semibold whitespace-nowrap`}>
+      <span>{a.icon}</span>
+      <span>{name}</span>
+    </span>
+  );
+}
+
+// ============================================================
+// RESOURCES VIEW — works for talent / company / investor; filters by audience
+// ============================================================
+function ResourcesView({ audience, onExit }) {
+  const [search, setSearch] = useState("");
+  const [filterCategory, setFilterCategory] = useState("all");
+  const [activeId, setActiveId] = useState(null);
+
+  const visible = useMemo(() => RESOURCES.filter(r => audience === "all" ? true : r.audience === audience), [audience]);
+  const categories = useMemo(() => [...new Set(visible.map(r => r.category))], [visible]);
+  const filtered = useMemo(() => {
+    return visible.filter(r => {
+      if (filterCategory !== "all" && r.category !== filterCategory) return false;
+      if (search && !(r.title + " " + r.desc + " " + r.category).toLowerCase().includes(search.toLowerCase())) return false;
+      return true;
+    });
+  }, [visible, filterCategory, search]);
+
+  const active = activeId ? visible.find(r => r.id === activeId) : null;
+
+  if (active) {
+    return (
+      <div className="space-y-4 max-w-3xl mx-auto">
+        <Button variant="ghost" icon={ArrowLeft} size="sm" onClick={() => setActiveId(null)}>Back to resources</Button>
+        <Card className="!p-8">
+          <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-stone-500 font-bold mb-3">
+            <Tag color="yellow">{active.category}</Tag>
+            <span>·</span>
+            <span>Updated {active.updatedAt}</span>
+            <span>·</span>
+            <span>{active.views} views</span>
+          </div>
+          <h1 className="font-display text-4xl mb-3">{active.title}</h1>
+          <p className="text-lg text-stone-700 mb-6">{active.desc}</p>
+          {active.type === "download" ? (
+            <div className="bg-stone-50 border border-stone-200 rounded-xl p-6 text-center">
+              <FileText size={36} className="text-amber-500 mx-auto mb-3" />
+              <div className="font-bold mb-1">{active.title}</div>
+              <div className="text-sm text-stone-500 mb-4">{active.fileType}</div>
+              <Button icon={Save} onClick={() => alert(`Downloaded ${active.title} (mock)`)}>Download</Button>
+            </div>
+          ) : (
+            <div className="prose prose-stone max-w-none text-stone-700 space-y-4 text-base leading-relaxed">
+              <p>This is placeholder body content for "{active.title}". Real content will be uploaded by Lighthouse staff post-launch — drawn from existing material like Founders Only podcast transcripts, Zap's Wrap archives, and talks.</p>
+              <p>The Resource Database is designed so each article gets a polished detail view like this one, with related resources surfaced in a sidebar and full-text search across the library.</p>
+              <p>For v2, the structure, taxonomy, and surface area are the deliverables. The content layer fills in over time.</p>
+            </div>
+          )}
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <div className="flex items-center gap-2 mb-1">
+          <h2 className="font-display text-3xl">Resources</h2>
+          <Tag color="yellow"><Sparkles size={10} /> {audience === "talent" ? "For talent" : "For hiring teams"}</Tag>
+        </div>
+        <p className="text-sm text-stone-500">
+          {audience === "talent"
+            ? "Articles to help you understand startup life, comp, equity, and what working at a Lighthouse-network company is like."
+            : "Hiring playbooks, role profiles, market data, and templates from the Lighthouse network."}
+        </p>
+      </div>
+
+      <Card className="!p-3">
+        <div className="grid sm:grid-cols-2 gap-2">
+          <Input placeholder="Search resources..." value={search} onChange={e => setSearch(e.target.value)} />
+          <Select value={filterCategory} onChange={setFilterCategory}
+            options={[{ value: "all", label: "All categories" }, ...categories.map(c => ({ value: c, label: c }))]} />
+        </div>
+      </Card>
+
+      {/* Featured (only on top-level view, no filter active) */}
+      {filterCategory === "all" && !search && (
+        <div>
+          <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-2">Featured</div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {filtered.filter(r => r.featured).slice(0, 6).map(r => (
+              <ResourceCard key={r.id} resource={r} onClick={() => setActiveId(r.id)} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div>
+        <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-2">
+          {filterCategory === "all" ? "All resources" : filterCategory} <span className="text-stone-400 font-normal normal-case">· {filtered.length}</span>
+        </div>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {filtered.map(r => <ResourceCard key={r.id} resource={r} onClick={() => setActiveId(r.id)} />)}
+        </div>
+        {filtered.length === 0 && <Card className="text-center py-10 text-sm text-stone-500">No resources match.</Card>}
+      </div>
+    </div>
+  );
+}
+
+function ResourceCard({ resource, onClick }) {
+  const isDownload = resource.type === "download";
+  return (
+    <Card className="hover:border-amber-400 transition" onClick={onClick}>
+      <div className="flex items-start gap-3">
+        <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${isDownload ? "bg-violet-100 text-violet-700" : "bg-yellow-100 text-amber-700"}`}>
+          {isDownload ? <FileText size={18} /> : <BookOpenCheck size={18} />}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-[10px] uppercase tracking-wider text-stone-500 font-bold">{resource.category}</div>
+          <div className="font-bold text-sm mt-0.5 leading-snug">{resource.title}</div>
+          <div className="text-xs text-stone-500 mt-1 line-clamp-2">{resource.desc}</div>
+          <div className="flex items-center gap-2 mt-2 text-[10px] text-stone-500">
+            <span>{resource.views} views</span>
+            <span>·</span>
+            <span>Updated {resource.updatedAt}</span>
+            {isDownload && <><span>·</span><span>{resource.fileType}</span></>}
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+// ============================================================
+// INVESTOR PORTAL — 3-tier hierarchy (Investor → Portfolio → Projects)
+// Multi-scope search (investor-wide / portco-scoped / project-scoped)
+// ============================================================
+function InvestorPortal({ onExit, investorId = 1 }) {
+  const [view, setView] = useState("dashboard"); // dashboard | portfolio | portco | project | search | resources
+  const [activePortcoId, setActivePortcoId] = useState(null);
+  const [activeProjectId, setActiveProjectId] = useState(null);
+  const [searchScope, setSearchScope] = useState({ kind: "investor_wide" }); // {kind, companyId?, projectId?}
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const investor = INVESTORS.find(i => i.id === investorId);
+  const myPortfolios = PORTFOLIOS.filter(p => p.investorId === investorId);
+  const myCompanies = myPortfolios.map(p => DATA_BUNDLE.companies.find(c => c.id === p.companyId)).filter(Boolean);
+  const myProjects = PROJECTS.filter(p => p.investorId === investorId);
+  const openProjects = myProjects.filter(p => p.status === "open");
+
+  return (
+    <div className="min-h-screen bg-white text-black">
+      <div className="border-b border-stone-200 bg-white/95 backdrop-blur sticky top-0 z-30">
+        <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-6">
+            <button onClick={() => setView("dashboard")} className="flex items-center gap-2 hover:text-amber-600">
+              <Zap className="text-amber-500 fill-amber-500" size={18} />
+              <span className="font-black tracking-tight">Lighthouse</span>
+              <span className="text-stone-500 text-xs">Investor</span>
+            </button>
+            <nav className="hidden md:flex items-center gap-1">
+              {[
+                { k: "dashboard", l: "Overview", icon: Home },
+                { k: "portfolio", l: "Portfolio", icon: Building2 },
+                { k: "search", l: "Find candidates", icon: Search },
+                { k: "resources", l: "Resources", icon: BookOpenCheck },
+              ].map(it => (
+                <button key={it.k} onClick={() => setView(it.k)}
+                  className={`px-3 py-1.5 text-sm rounded-lg transition flex items-center gap-1.5 ${view === it.k ? "bg-stone-100 text-amber-600" : "text-stone-500 hover:text-black"}`}>
+                  <it.icon size={14} />{it.l}
+                </button>
+              ))}
+            </nav>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="text-xs text-stone-500 hidden sm:block">{investor?.name} <Tag color="purple" size="sm">{investor?.tier}</Tag></div>
+            <Button variant="ghost" size="sm" icon={LogOut} onClick={onExit}>Exit</Button>
+          </div>
+        </div>
+      </div>
+      <div className="max-w-7xl mx-auto px-6 py-6">
+        {view === "dashboard" && <InvestorDashboard investor={investor} portfolios={myPortfolios} projects={myProjects} companies={myCompanies}
+          onPortco={(id) => { setActivePortcoId(id); setView("portco"); }}
+          onProject={(id) => { setActiveProjectId(id); setView("project"); }}
+          onSearch={() => setView("search")} />}
+        {view === "portfolio" && <InvestorPortfolio investor={investor} portfolios={myPortfolios} companies={myCompanies}
+          onPortco={(id) => { setActivePortcoId(id); setView("portco"); }} />}
+        {view === "portco" && activePortcoId && <PortcoDetail companyId={activePortcoId} investorId={investorId}
+          projects={myProjects.filter(p => p.companyId === activePortcoId)}
+          onBack={() => setView("portfolio")}
+          onProject={(id) => { setActiveProjectId(id); setView("project"); }} />}
+        {view === "project" && activeProjectId && <ProjectDetail projectId={activeProjectId} investorId={investorId}
+          onBack={() => setView("dashboard")} />}
+        {view === "search" && <InvestorSearch investor={investor} portfolios={myPortfolios} projects={myProjects}
+          scope={searchScope} setScope={setSearchScope} query={searchQuery} setQuery={setSearchQuery}
+          onAssign={() => alert("Assigned to project (mock).")} />}
+        {view === "resources" && <ResourcesView audience="company" onExit={onExit} />}
+      </div>
+    </div>
+  );
+}
+
+function InvestorDashboard({ investor, portfolios, projects, companies, onPortco, onProject, onSearch }) {
+  const open = projects.filter(p => p.status === "open");
+  const investorWide = projects.filter(p => p.scope === "investor_wide");
+  const totalApplicants = projects.reduce((s, p) => s + (p.candidatesShortlisted || 0), 0);
+  return (
+    <div className="space-y-6">
+      <div className="flex items-end justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="font-display text-4xl">{investor?.name}</h1>
+          <div className="text-sm text-stone-500 mt-1">{investor?.focus} · {investor?.aum} AUM · {investor?.fundsActive} active fund{investor?.fundsActive === 1 ? "" : "s"}</div>
+        </div>
+        <Button icon={Search} onClick={onSearch}>Find candidates</Button>
+      </div>
+      <div className="grid sm:grid-cols-4 gap-3">
+        <Card><div className="text-xs uppercase tracking-wider text-stone-500 font-bold">Portfolio</div><div className="font-display text-3xl mt-1">{companies.length}</div><div className="text-xs text-stone-500 mt-0.5">companies</div></Card>
+        <Card><div className="text-xs uppercase tracking-wider text-stone-500 font-bold">Open projects</div><div className="font-display text-3xl mt-1">{open.length}</div><div className="text-xs text-stone-500 mt-0.5">{investorWide.length} cross-portfolio</div></Card>
+        <Card><div className="text-xs uppercase tracking-wider text-stone-500 font-bold">Candidates pipeline</div><div className="font-display text-3xl mt-1">{totalApplicants}</div><div className="text-xs text-stone-500 mt-0.5">across all projects</div></Card>
+        <Card><div className="text-xs uppercase tracking-wider text-stone-500 font-bold">Plan</div><div className="font-display text-2xl mt-1 capitalize">{investor?.tier}</div><div className="text-xs text-stone-500 mt-0.5">{investor?.tier === "scale" ? "Up to 20+ portcos" : investor?.tier === "core" ? "Up to 10 portcos" : "Up to 5 portcos"}</div></Card>
+      </div>
+
+      <div>
+        <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-2">Portfolio companies</div>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {companies.map(c => {
+            const portco = portfolios.find(p => p.companyId === c.id);
+            const ps = projects.filter(p => p.companyId === c.id);
+            const op = ps.filter(p => p.status === "open");
+            return (
+              <Card key={c.id} onClick={() => onPortco(c.id)} className="hover:border-amber-400">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className="font-bold">{c.name}</div>
+                    <div className="text-xs text-stone-500">{c.stage} · {c.industry}</div>
+                  </div>
+                  {portco?.leadInvestor && <Tag color="yellow" size="sm">Lead</Tag>}
+                </div>
+                <div className="flex items-center gap-3 mt-3 text-xs text-stone-500">
+                  <span><Briefcase size={11} className="inline mr-0.5" /> {op.length} open</span>
+                  <span>·</span>
+                  <span>{ps.length} total</span>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      </div>
+
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-xs uppercase tracking-wider text-stone-500 font-bold">Active projects</div>
+          <Tag color="yellow">{open.length} open</Tag>
+        </div>
+        <div className="space-y-2">
+          {open.slice(0, 8).map(p => {
+            const company = p.companyId ? DATA_BUNDLE.companies.find(c => c.id === p.companyId) : null;
+            return (
+              <Card key={p.id} onClick={() => onProject(p.id)} className="hover:border-amber-400">
+                <div className="flex items-start justify-between gap-3 flex-wrap">
+                  <div className="min-w-0">
+                    <div className="font-bold">{p.title}</div>
+                    <div className="text-xs text-stone-500 mt-0.5">
+                      {p.scope === "investor_wide"
+                        ? <span><Tag color="yellow" size="sm">Cross-portfolio</Tag> · across all {portfolios.length} companies</span>
+                        : <span>{company?.name} · {company?.stage}</span>}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-bold text-amber-600">{p.candidatesShortlisted}</div>
+                    <div className="text-[10px] uppercase tracking-wider text-stone-500 font-bold">shortlisted</div>
+                  </div>
+                </div>
+                <div className="text-xs text-stone-500 mt-2">${p.salaryMin}–${p.salaryMax}K · created {p.createdAt}</div>
+              </Card>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function InvestorPortfolio({ investor, portfolios, companies, onPortco }) {
+  return (
+    <div className="space-y-4">
+      <div>
+        <h1 className="font-display text-3xl">Portfolio</h1>
+        <div className="text-sm text-stone-500 mt-1">{companies.length} of up to {investor?.tier === "scale" ? 20 : investor?.tier === "core" ? 10 : 5} portfolio companies on the {investor?.tier} plan</div>
+      </div>
+      <Card padded={false}>
+        <table className="w-full text-sm">
+          <thead className="bg-stone-50 border-b border-stone-200 text-[10px] uppercase tracking-wider text-stone-500">
+            <tr><th className="text-left p-3">Company</th><th className="text-left p-3">Stage</th><th className="text-left p-3">Industry</th><th className="text-left p-3">Round invested</th><th className="text-left p-3">Check</th><th className="text-center p-3">Lead?</th></tr>
+          </thead>
+          <tbody>
+            {companies.map(c => {
+              const p = portfolios.find(p => p.companyId === c.id);
+              return (
+                <tr key={c.id} onClick={() => onPortco(c.id)} className="border-b border-stone-200 cursor-pointer hover:bg-stone-50">
+                  <td className="p-3 font-bold">{c.name}</td>
+                  <td className="p-3"><Tag color="green">{c.stage}</Tag></td>
+                  <td className="p-3 text-stone-700">{c.industry}</td>
+                  <td className="p-3 text-stone-700">{p?.round}</td>
+                  <td className="p-3 text-stone-700">{p?.checkSize}</td>
+                  <td className="p-3 text-center">{p?.leadInvestor && <span className="text-amber-600">⭐</span>}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </Card>
+    </div>
+  );
+}
+
+function PortcoDetail({ companyId, projects, onBack, onProject }) {
+  const company = DATA_BUNDLE.companies.find(c => c.id === companyId);
+  const open = projects.filter(p => p.status === "open");
+  const closed = projects.filter(p => p.status !== "open");
+  return (
+    <div className="space-y-4">
+      <Button variant="ghost" icon={ArrowLeft} size="sm" onClick={onBack}>Back to portfolio</Button>
+      <Card>
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div>
+            <h1 className="font-display text-3xl">{company?.name}</h1>
+            <div className="text-sm text-stone-500 mt-1">{company?.stage} · {company?.industry} · {company?.team} on team</div>
+          </div>
+          <Button icon={Plus}>New hiring project</Button>
+        </div>
+      </Card>
+      <div>
+        <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-2">Open projects · {open.length}</div>
+        <div className="space-y-2">
+          {open.map(p => (
+            <Card key={p.id} onClick={() => onProject(p.id)} className="hover:border-amber-400">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="font-bold">{p.title}</div>
+                  <div className="text-xs text-stone-500 mt-0.5">${p.salaryMin}–${p.salaryMax}K · created {p.createdAt}</div>
+                </div>
+                <div className="text-right">
+                  <div className="font-bold text-amber-600">{p.candidatesShortlisted}</div>
+                  <div className="text-[10px] uppercase tracking-wider text-stone-500 font-bold">shortlisted</div>
+                </div>
+              </div>
+            </Card>
+          ))}
+          {open.length === 0 && <Card className="text-center py-8 text-sm text-stone-500">No open projects.</Card>}
+        </div>
+      </div>
+      {closed.length > 0 && (
+        <div>
+          <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-2">Closed · {closed.length}</div>
+          <div className="space-y-2">
+            {closed.map(p => (
+              <Card key={p.id} onClick={() => onProject(p.id)} className="opacity-70 hover:opacity-100">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="font-bold">{p.title}</div>
+                    <div className="text-xs text-stone-500 mt-0.5">{p.status} · {p.createdAt}</div>
+                  </div>
+                  <Tag>{p.status}</Tag>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ProjectDetail({ projectId, onBack }) {
+  const p = PROJECTS.find(x => x.id === projectId);
+  const company = p?.companyId ? DATA_BUNDLE.companies.find(c => c.id === p.companyId) : null;
+  const [pipeline, setPipeline] = useState(() => {
+    // Mock pipeline stages with random shortlisted candidates
+    const candidates = DATA_BUNDLE.candidates.filter(c => c.vettingStatus === "Active" && c.primaryRole === p?.role).slice(0, p?.candidatesShortlisted || 6);
+    const stages = ["Sourced", "Reviewing", "Intro requested", "Interviewing", "Offer", "Closed"];
+    return stages.map((s, i) => ({
+      stage: s,
+      candidates: candidates.filter((_, j) => j % stages.length === i).map(c => c.id)
+    }));
+  });
+
+  return (
+    <div className="space-y-4">
+      <Button variant="ghost" icon={ArrowLeft} size="sm" onClick={onBack}>Back</Button>
+      <Card>
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div>
+            <div className="text-xs uppercase tracking-wider text-stone-500 font-bold">
+              {p?.scope === "investor_wide" ? "Cross-portfolio search" : `${company?.name} · ${company?.stage}`}
+            </div>
+            <h1 className="font-display text-3xl mt-1">{p?.title}</h1>
+            <div className="text-sm text-stone-500 mt-2">{p?.description}</div>
+            <div className="flex items-center gap-3 mt-3 text-xs text-stone-500">
+              <span>${p?.salaryMin}–${p?.salaryMax}K</span>
+              <span>·</span>
+              <span><Calendar size={11} className="inline" /> Created {p?.createdAt}</span>
+              <span>·</span>
+              <Tag color={p?.status === "open" ? "green" : "default"}>{p?.status}</Tag>
+            </div>
+          </div>
+          <div className="flex flex-col gap-2">
+            <Button size="sm" icon={Search}>Find more candidates</Button>
+            <Button size="sm" variant="secondary" icon={Send}>Share with team</Button>
+          </div>
+        </div>
+      </Card>
+
+      <div>
+        <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-3">Pipeline</div>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 overflow-x-auto">
+          {pipeline.map((col, i) => (
+            <div key={col.stage} className="bg-stone-50 border border-stone-200 rounded-lg p-2 min-h-[200px]">
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-xs uppercase tracking-wider font-bold text-stone-700">{col.stage}</div>
+                <Tag size="sm">{col.candidates.length}</Tag>
+              </div>
+              <div className="space-y-1.5">
+                {col.candidates.map(cid => {
+                  const c = DATA_BUNDLE.candidates.find(x => x.id === cid);
+                  if (!c) return null;
+                  return (
+                    <div key={cid} className="bg-white border border-stone-200 rounded p-2">
+                      <div className="flex items-center gap-2">
+                        <Avatar candidate={c} size={24} />
+                        <div className="min-w-0 flex-1">
+                          <div className="font-bold text-xs truncate">{c.firstName} {c.lastName}</div>
+                          <div className="text-[10px] text-stone-500 truncate">{c.currentRole}</div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function InvestorSearch({ investor, portfolios, projects, scope, setScope, query, setQuery, onAssign }) {
+  const [results, setResults] = useState([]);
+  const [searched, setSearched] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  function runSearch() {
+    setLoading(true);
+    setSearched(true);
+    setTimeout(() => {
+      const interp = aiInterpret(query);
+      const filtered = { yoeMin: 0, yoeMax: 25, stages: [], locations: [], skills: [], vettedOnly: true, archetypes: [], assessmentOnly: false };
+      const ranked = rankCandidates(DATA_BUNDLE.candidates, query, filtered, interp).slice(0, 30);
+      setResults(ranked);
+      setLoading(false);
+    }, 1200);
+  }
+
+  return (
+    <div className="space-y-4 max-w-5xl mx-auto">
+      <div>
+        <h1 className="font-display text-3xl">Find candidates</h1>
+        <div className="text-sm text-stone-500 mt-1">Search across the network, scope to a portfolio company, or search within an existing project.</div>
+      </div>
+
+      {/* Scope picker */}
+      <Card className="!p-3">
+        <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-2">Search scope</div>
+        <div className="grid sm:grid-cols-3 gap-2">
+          <button onClick={() => setScope({ kind: "investor_wide" })}
+            className={`p-3 rounded-lg border text-left transition ${scope.kind === "investor_wide" ? "border-amber-500 bg-yellow-50" : "border-stone-200 hover:border-stone-400"}`}>
+            <div className="text-xs uppercase tracking-wider font-bold text-stone-500">Investor-wide</div>
+            <div className="text-sm font-bold mt-0.5">All of {investor?.name}</div>
+            <div className="text-xs text-stone-500 mt-0.5">Assign results to any portco / project</div>
+          </button>
+          <div className={`p-3 rounded-lg border ${scope.kind === "portco_scoped" ? "border-amber-500 bg-yellow-50" : "border-stone-200"}`}>
+            <div className="text-xs uppercase tracking-wider font-bold text-stone-500">Portco-scoped</div>
+            <Select value={scope.kind === "portco_scoped" ? scope.companyId : ""} onChange={v => v && setScope({ kind: "portco_scoped", companyId: +v })}
+              options={[{ value: "", label: "Pick a portfolio company..." }, ...portfolios.map(p => {
+                const c = DATA_BUNDLE.companies.find(c => c.id === p.companyId); return { value: p.companyId, label: c?.name };
+              })]} className="text-sm mt-1" />
+          </div>
+          <div className={`p-3 rounded-lg border ${scope.kind === "project_scoped" ? "border-amber-500 bg-yellow-50" : "border-stone-200"}`}>
+            <div className="text-xs uppercase tracking-wider font-bold text-stone-500">Project-scoped</div>
+            <Select value={scope.kind === "project_scoped" ? scope.projectId : ""} onChange={v => v && setScope({ kind: "project_scoped", projectId: +v })}
+              options={[{ value: "", label: "Pick a project..." }, ...projects.filter(p => p.status === "open").map(p => ({ value: p.id, label: p.title }))]} className="text-sm mt-1" />
+          </div>
+        </div>
+      </Card>
+
+      <Card padded={false} className="p-2">
+        <Textarea rows={4} value={query} onChange={e => setQuery(e.target.value)}
+          placeholder="Describe what you're looking for. e.g. 'Founding engineer with ML infra experience for a Series A AI infrastructure company...'"
+          className="border-0 bg-transparent text-base" />
+        <div className="flex items-center justify-between px-3 pb-2 pt-1 border-t border-stone-200">
+          <div className="text-xs text-stone-500">{query.split(/\s+/).filter(Boolean).length} words</div>
+          <Button onClick={runSearch} icon={Search} disabled={!query.trim() || loading}>{loading ? "Searching..." : "Search"}</Button>
+        </div>
+      </Card>
+
+      {searched && !loading && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-stone-500"><span className="font-bold text-amber-600">{results.length}</span> ranked candidates</div>
+            {scope.kind === "investor_wide" && <div className="text-xs text-stone-500">Each result can be assigned to any open project</div>}
+          </div>
+          {results.map(({ candidate, score }) => (
+            <Card key={candidate.id} className="hover:border-amber-400">
+              <div className="flex items-start gap-3">
+                <Avatar candidate={candidate} size={48} />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <div className="font-bold">{candidate.firstName} {candidate.lastName}</div>
+                    {candidate.archetype && <Archetype12Badge name={archetype12FromCandidate(candidate)} />}
+                  </div>
+                  <div className="text-sm text-stone-500">{candidate.currentRole} · {candidate.currentCompany}</div>
+                  <div className="flex flex-wrap gap-1 mt-2">{candidate.skills.slice(0, 4).map(s => <Tag key={s}>{s}</Tag>)}</div>
+                </div>
+                <div className="flex flex-col items-end gap-2">
+                  <Tag color="yellow">{score} match</Tag>
+                  {scope.kind === "investor_wide"
+                    ? <Select value="" onChange={v => v && onAssign()} className="text-xs"
+                        options={[{ value: "", label: "Assign to project ⌄" }, ...projects.filter(p => p.status === "open").map(p => ({ value: p.id, label: p.title }))]} />
+                    : <Button size="sm" variant="secondary" onClick={onAssign}>Add to project</Button>}
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AdminInvestorsView() {
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h2 className="font-display text-3xl">Investors</h2>
+          <div className="text-xs text-stone-500">{INVESTORS.length} active firms · {PORTFOLIOS.length} portfolio companies · {PROJECTS.filter(p => p.status === "open").length} open projects</div>
+        </div>
+        <Button icon={Plus} variant="secondary">Add investor firm</Button>
+      </div>
+      <Card padded={false}>
+        <table className="w-full text-sm">
+          <thead className="bg-stone-50 border-b border-stone-200 text-[10px] uppercase tracking-wider text-stone-500">
+            <tr><th className="text-left p-3">Firm</th><th className="text-left p-3">Plan</th><th className="text-left p-3">Focus</th><th className="text-left p-3">AUM</th><th className="text-center p-3">Portcos</th><th className="text-center p-3">Open projects</th><th className="text-left p-3">Seats</th></tr>
+          </thead>
+          <tbody>
+            {INVESTORS.map(inv => {
+              const ports = PORTFOLIOS.filter(p => p.investorId === inv.id).length;
+              const openP = PROJECTS.filter(p => p.investorId === inv.id && p.status === "open").length;
+              return (
+                <tr key={inv.id} className="border-b border-stone-200 hover:bg-stone-50">
+                  <td className="p-3"><div className="font-bold">{inv.name}</div><div className="text-xs text-stone-500">{inv.location}</div></td>
+                  <td className="p-3"><Tag color="purple">{inv.tier}</Tag></td>
+                  <td className="p-3 text-stone-700 max-w-xs">{inv.focus}</td>
+                  <td className="p-3 text-stone-700">{inv.aum}</td>
+                  <td className="p-3 text-center font-bold">{ports}</td>
+                  <td className="p-3 text-center font-bold text-amber-600">{openP}</td>
+                  <td className="p-3 text-xs text-stone-500">{inv.seats.length} seat{inv.seats.length === 1 ? "" : "s"}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </Card>
+    </div>
+  );
+}
+
+// ============================================================
 // MODE SWITCHER — floating bottom-right toggle to flip between roles
 // ============================================================
 function ModeSwitcher({ mode, setMode, companyId, setCompanyId }) {
@@ -3213,7 +3882,7 @@ function SignedInShell({ user, logout }) {
     <>
       {(mode === "candidate" || mode === "talent") && <CandidateIntakeFlow onExit={logout} />}
       {mode === "company" && <CompanyPortal preselectedCompanyId={companyId} onExit={logout} />}
-      {mode === "investor" && <InvestorComingSoon onExit={logout} />}
+      {mode === "investor" && <InvestorPortal onExit={logout} investorId={user.investorId || 1} />}
       {mode === "admin" && <AdminPortal onExit={logout} />}
       {/* Persistent ModeSwitcher — always visible during demo/MVP for fast cross-role testing */}
       <ModeSwitcher mode={mode} setMode={setMode} companyId={companyId} setCompanyId={setCompanyId} />
