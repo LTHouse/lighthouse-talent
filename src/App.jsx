@@ -3199,15 +3199,16 @@ export default function App() {
 
 function AuthedApp() {
   const { user, logout } = useAuth();
-  // In demo/MVP mode the ModeSwitcher is persistent for ALL signed-in users so we can
-  // hop between roles and gates without re-authenticating. The initial mode reflects the
-  // role the user signed in as (e.g. company@lt.house → company portal first).
-  const initialMode = user?.role === "admin" ? "candidate" : (user?.role === "talent" ? "candidate" : (user?.role || "candidate"));
-  const [mode, setMode] = useState(initialMode);
-  const [companyId, setCompanyId] = useState(user?.companyId || 5);
-
   if (!user) return <LoginScreen />;
+  return <SignedInShell key={user.email} user={user} logout={logout} />;
+}
 
+function SignedInShell({ user, logout }) {
+  // The `key={user.email}` on AuthedApp ensures this remounts when the user changes,
+  // so initialMode honors the role the user signed in with.
+  const initialMode = user.role === "admin" ? "candidate" : (user.role === "talent" ? "candidate" : user.role);
+  const [mode, setMode] = useState(initialMode);
+  const [companyId, setCompanyId] = useState(user.companyId || 5);
   return (
     <>
       {(mode === "candidate" || mode === "talent") && <CandidateIntakeFlow onExit={logout} />}
