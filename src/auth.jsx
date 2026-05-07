@@ -5,7 +5,8 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { Zap, ArrowRight, ChevronLeft, Sparkles } from "lucide-react";
 
 const MOCK_USERS = [
-  { email: "talent@lt.house", password: "password", role: "talent", name: "Demo Talent" },
+  // Demo talent user is pinned to candidate id 2 (Eliana Eskinazi) so messages and interested companies have real data
+  { email: "talent@lt.house", password: "password", role: "talent", name: "Eliana Eskinazi", candidateId: 2 },
   { email: "company@lt.house", password: "password", role: "company", name: "Demo Company", companyId: 5 },
   { email: "investor@lt.house", password: "password", role: "investor", name: "Demo Investor", investorId: 1 },
   { email: "zap@lt.house", password: "password", role: "admin", name: "Zap" },

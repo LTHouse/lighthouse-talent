@@ -19,7 +19,7 @@ import {
 // ============================================================
 // DATA IMPORTS — 154 candidates, 18 companies, 93 intros, 24 jobs, 203 applications
 // ============================================================
-import { DATA_BUNDLE, INTROS, JOBS, APPLICATIONS, RESOURCES, INVESTORS, PORTFOLIOS, PROJECTS } from './data.js';
+import { DATA_BUNDLE, INTROS, JOBS, APPLICATIONS, RESOURCES, INVESTORS, PORTFOLIOS, PROJECTS, MESSAGE_THREADS, INTERESTED_COMPANIES, DEMO_TALENT_CANDIDATE_ID } from './data.js';
 import { AuthProvider, useAuth, LoginScreen } from './auth.jsx';
 
 // ============================================================
@@ -661,7 +661,191 @@ const SAMPLE_LINKEDIN_PROFILES = [
   },
 ];
 
-function CandidateIntakeFlow({ onExit }) {
+// ============================================================
+// TALENT PORTAL — top-nav shell wrapping the candidate flow + Jobs / Interested / Messages / Resources
+// ============================================================
+function TalentPortal({ onExit, candidateId }) {
+  const [tab, setTab] = useState("apply");
+  const candidate = DATA_BUNDLE.candidates.find(c => c.id === candidateId) || null;
+  const myThreads = MESSAGE_THREADS.filter(t => t.candidateId === candidateId);
+  const myInterested = INTERESTED_COMPANIES.filter(i => i.candidateId === candidateId);
+  const unreadCount = myThreads.filter(t => t.unread).length;
+
+  return (
+    <div className="min-h-screen bg-white text-black">
+      <div className="border-b border-stone-200 bg-white/95 backdrop-blur sticky top-0 z-30">
+        <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-6">
+            <button onClick={() => setTab("apply")} className="flex items-center gap-2 hover:text-amber-600">
+              <Zap className="text-amber-500 fill-amber-500" size={18} />
+              <span className="font-black tracking-tight">Lighthouse</span>
+              <span className="text-stone-500 text-xs">Talent</span>
+            </button>
+            <nav className="hidden md:flex items-center gap-1">
+              {[
+                { k: "apply", l: candidate ? "Profile" : "Apply", icon: UserPlus },
+                { k: "jobs", l: "Open Jobs", icon: Briefcase },
+                { k: "interested", l: "Interested Companies", icon: Star, count: myInterested.length },
+                { k: "messages", l: "Messages", icon: MessageSquare, count: unreadCount, hot: unreadCount > 0 },
+                { k: "resources", l: "Resources", icon: BookOpenCheck },
+              ].map(it => (
+                <button key={it.k} onClick={() => setTab(it.k)}
+                  className={`px-3 py-1.5 text-sm rounded-lg transition flex items-center gap-1.5 ${tab === it.k ? "bg-stone-100 text-amber-600" : "text-stone-500 hover:text-black"}`}>
+                  <it.icon size={14} />
+                  {it.l}
+                  {typeof it.count === "number" && it.count > 0 && (
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${it.hot ? "bg-amber-500 text-white" : "bg-stone-200 text-stone-700"}`}>{it.count}</span>
+                  )}
+                </button>
+              ))}
+            </nav>
+          </div>
+          <div className="flex items-center gap-3">
+            {candidate && (
+              <div className="hidden sm:flex items-center gap-2 text-xs text-stone-500">
+                <Avatar candidate={candidate} size={28} />
+                <span>{candidate.firstName} {candidate.lastName}</span>
+              </div>
+            )}
+            <Button variant="ghost" size="sm" icon={LogOut} onClick={onExit}>Exit</Button>
+          </div>
+        </div>
+      </div>
+      <div className="max-w-7xl mx-auto px-6 py-6">
+        {tab === "apply" && <CandidateIntakeFlow onExit={onExit} embedded />}
+        {tab === "jobs" && <TalentJobBoard onExit={() => setTab("apply")} embedded />}
+        {tab === "interested" && <InterestedCompaniesView interested={myInterested} candidate={candidate} onMessage={() => setTab("messages")} />}
+        {tab === "messages" && <MessagesView threads={myThreads} candidate={candidate} />}
+        {tab === "resources" && <ResourcesView audience="talent" onExit={onExit} />}
+      </div>
+    </div>
+  );
+}
+
+const INTEREST_STATUS_META = {
+  pending_intro: { label: "Pending intro", color: "yellow", desc: "Zap is preparing the intro." },
+  intro_made: { label: "Intro made", color: "blue", desc: "Zap connected you both — they may reach out." },
+  call_scheduled: { label: "Call scheduled", color: "purple", desc: "Conversation booked." },
+  declined: { label: "Passed", color: "default", desc: "You passed on this one." },
+  hired: { label: "Hired", color: "green", desc: "You took the offer 🎉" },
+};
+
+function InterestedCompaniesView({ interested, candidate, onMessage }) {
+  return (
+    <div className="space-y-4 max-w-4xl mx-auto">
+      <div>
+        <h2 className="font-display text-3xl">Companies interested in you</h2>
+        <p className="text-sm text-stone-500 mt-1">Companies that have asked Zap for an intro to you, with notes from Zap and intro status.</p>
+      </div>
+      {interested.length === 0 && (
+        <Card className="text-center py-12">
+          <Building2 className="text-stone-400 mx-auto mb-2" size={28} />
+          <div className="font-bold">No interested companies yet.</div>
+          <div className="text-xs text-stone-500 mt-1">When companies request intros to you through Zap, they'll appear here.</div>
+        </Card>
+      )}
+      {interested.map(intro => {
+        const company = DATA_BUNDLE.companies.find(c => c.id === intro.companyId);
+        if (!company) return null;
+        const meta = INTEREST_STATUS_META[intro.status] || INTEREST_STATUS_META.pending_intro;
+        return (
+          <Card key={intro.id} className="hover:border-amber-400 transition">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-lg bg-yellow-100 text-amber-700 flex items-center justify-center flex-shrink-0 font-bold">
+                {company.name.slice(0, 2).toUpperCase()}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="font-bold text-lg">{company.name}</div>
+                  <Tag color={meta.color}>{meta.label}</Tag>
+                </div>
+                <div className="text-sm text-stone-500">{company.stage} · {company.industry}</div>
+                <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-stone-500">
+                  <span><Briefcase size={11} className="inline mr-0.5" /> {intro.role}</span>
+                  <span>·</span>
+                  <span><Calendar size={11} className="inline mr-0.5" /> Interested since {intro.interestedAt}</span>
+                </div>
+                <div className="mt-3 bg-yellow-400/5 border-l-2 border-amber-500 rounded-r-md p-3 text-sm italic text-stone-700">
+                  <div className="text-[10px] uppercase tracking-wider text-amber-600 font-bold mb-1 not-italic">Zap's note to you</div>
+                  "{intro.zapNote}"
+                </div>
+                <div className="flex items-center gap-2 mt-3 flex-wrap">
+                  {intro.status === "pending_intro" && <>
+                    <Button size="sm" icon={CheckCircle2} onClick={() => alert("Marked as interested — Zap will make the warm intro.")}>I'm interested</Button>
+                    <Button size="sm" variant="ghost" icon={X}>Pass</Button>
+                  </>}
+                  {(intro.status === "intro_made" || intro.status === "call_scheduled") &&
+                    <Button size="sm" icon={MessageSquare} onClick={onMessage}>Open messages</Button>}
+                  {intro.status === "call_scheduled" && <Tag color="purple">📅 Call booked</Tag>}
+                  {intro.status === "declined" && <Tag>Archived</Tag>}
+                </div>
+              </div>
+            </div>
+          </Card>
+        );
+      })}
+    </div>
+  );
+}
+
+function MessagesView({ threads, candidate }) {
+  const [activeId, setActiveId] = useState(threads[0]?.id || null);
+  const active = threads.find(t => t.id === activeId);
+  return (
+    <div className="grid lg:grid-cols-[320px_1fr] gap-4 max-w-6xl mx-auto">
+      <div className="space-y-2">
+        <h2 className="font-display text-2xl mb-2">Messages</h2>
+        {threads.map(t => (
+          <button key={t.id} onClick={() => setActiveId(t.id)}
+            className={`w-full text-left bg-white border rounded-xl p-3 transition ${activeId === t.id ? "border-amber-500 bg-yellow-50/40" : "border-stone-200 hover:border-stone-400"}`}>
+            <div className="flex items-center justify-between gap-2">
+              <div className="font-bold text-sm truncate">{t.fromName}</div>
+              {t.unread && <span className="w-2 h-2 rounded-full bg-amber-500 flex-shrink-0" />}
+            </div>
+            <div className="text-xs text-stone-700 mt-0.5 truncate">{t.subject}</div>
+            <div className="text-xs text-stone-500 mt-1 line-clamp-2">{t.snippet}</div>
+            <div className="text-[10px] text-stone-500 mt-1">{t.lastUpdate}</div>
+          </button>
+        ))}
+        {threads.length === 0 && <Card className="text-center py-8 text-sm text-stone-500">No messages yet.</Card>}
+      </div>
+      {active && (
+        <div className="space-y-3">
+          <Card>
+            <div className="flex items-start justify-between gap-3 flex-wrap mb-3">
+              <div>
+                <div className="text-xs uppercase tracking-wider text-stone-500 font-bold">{active.from === "zap" ? "From Zap" : "From a company"}</div>
+                <div className="font-bold text-lg">{active.fromName}</div>
+                <div className="text-sm text-stone-500">{active.subject}</div>
+              </div>
+            </div>
+            <div className="space-y-3">
+              {active.messages.map((m, i) => (
+                <div key={i} className={`flex ${m.author === "talent" ? "justify-end" : "justify-start"}`}>
+                  <div className={`max-w-[80%] rounded-2xl px-4 py-3 ${m.author === "talent" ? "bg-yellow-400 text-black" : m.author === "zap" ? "bg-stone-100 border border-stone-200" : "bg-blue-50 border border-blue-200"}`}>
+                    <div className="text-xs font-bold mb-1 opacity-70">
+                      {m.author === "talent" ? "You" : m.author === "zap" ? "Zap" : (active.fromName.split("·")[1] || active.fromName).trim()}
+                    </div>
+                    <div className="text-sm whitespace-pre-wrap">{m.text}</div>
+                    <div className="text-[10px] mt-1 opacity-60">{m.ts}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 pt-4 border-t border-stone-200">
+              <Textarea rows={3} placeholder="Reply..." className="text-sm" />
+              <div className="flex justify-end mt-2">
+                <Button size="sm" icon={Send} onClick={() => alert("Reply sent (mock).")}>Send reply</Button>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CandidateIntakeFlow({ onExit, embedded }) {
   const [step, setStep] = useState(0);
   const [showJobBoard, setShowJobBoard] = useState(false);
   const [showResources, setShowResources] = useState(false);
@@ -705,24 +889,36 @@ function CandidateIntakeFlow({ onExit }) {
 
   const showProgress = step > 0 && step < CANDIDATE_STEPS.length - 1;
 
+  // When embedded inside TalentPortal we skip the duplicate header.
+  const Wrapper = embedded ? "div" : "div";
   return (
-    <div className="min-h-screen bg-white text-black">
-      <div className="border-b border-stone-200 bg-white/90 backdrop-blur sticky top-0 z-30">
-        <div className="max-w-3xl mx-auto px-6 py-3 flex items-center justify-between">
-          <button onClick={onExit} className="flex items-center gap-2 text-stone-500 hover:text-amber-500">
-            <Zap className="text-amber-500 fill-yellow-400" size={18} />
-            <span className="font-black tracking-tight text-black">Lighthouse</span>
-            <span className="text-stone-500 text-xs">Talent</span>
-          </button>
-          {showProgress && <div className="text-xs text-stone-500 tabular-nums">Step {step}/{5}</div>}
-        </div>
-        {showProgress && (
-          <div className="max-w-3xl mx-auto px-6 pb-3">
-            <StepIndicator current={step - 1} steps={CANDIDATE_STEPS.slice(1, 6)} />
+    <div className={embedded ? "" : "min-h-screen bg-white text-black"}>
+      {!embedded && (
+        <div className="border-b border-stone-200 bg-white/90 backdrop-blur sticky top-0 z-30">
+          <div className="max-w-3xl mx-auto px-6 py-3 flex items-center justify-between">
+            <button onClick={onExit} className="flex items-center gap-2 text-stone-500 hover:text-amber-500">
+              <Zap className="text-amber-500 fill-yellow-400" size={18} />
+              <span className="font-black tracking-tight text-black">Lighthouse</span>
+              <span className="text-stone-500 text-xs">Talent</span>
+            </button>
+            {showProgress && <div className="text-xs text-stone-500 tabular-nums">Step {step}/{5}</div>}
           </div>
-        )}
-      </div>
-      <div className="max-w-3xl mx-auto px-6 py-10">
+          {showProgress && (
+            <div className="max-w-3xl mx-auto px-6 pb-3">
+              <StepIndicator current={step - 1} steps={CANDIDATE_STEPS.slice(1, 6)} />
+            </div>
+          )}
+        </div>
+      )}
+      {embedded && showProgress && (
+        <div className="max-w-3xl mx-auto px-6 pt-2 pb-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-xs uppercase tracking-wider text-stone-500 font-bold">Apply · Step {step}/5</div>
+          </div>
+          <StepIndicator current={step - 1} steps={CANDIDATE_STEPS.slice(1, 6)} />
+        </div>
+      )}
+      <div className={embedded ? "max-w-3xl mx-auto px-0" : "max-w-3xl mx-auto px-6 py-10"}>
         {step === 0 && <CandidateLanding onStart={next} onBrowseJobs={() => setShowJobBoard(true)} onBrowseResources={() => setShowResources(true)} />}
         {step === 1 && <ConnectCareer profile={profile} update={update} onNext={next} onBack={back} />}
         {step === 2 && <ReviewProfile profile={profile} update={update} onNext={next} onBack={back} />}
@@ -1348,7 +1544,8 @@ function CompanyPortal({ onExit, preselectedCompanyId }) {
         )}
         {view === "searches" && (
           <SavedSearchesView searches={savedSearches.filter(s => s.companyId === me)}
-            onRunSearch={runSearch} setSearches={setSavedSearches} />
+            onRunSearch={runSearch} setSearches={setSavedSearches}
+            onNewSearch={() => setView("home")} />
         )}
         {view === "intros" && (
           <IntrosView companyId={me} onOpenCandidate={(id) => { setActiveId(id); setView("profile"); }} />
@@ -1356,7 +1553,14 @@ function CompanyPortal({ onExit, preselectedCompanyId }) {
         {view === "browse" && (
           <BrowseDatabase
             onOpenProfile={(id) => { setActiveId(id); setView("profile"); }}
-            companyId={me} shortlists={shortlists} setShortlists={setShortlists} />
+            companyId={me} shortlists={shortlists} setShortlists={setShortlists}
+            onSaveAsSearch={({ name, query }) => {
+              setSavedSearches([...savedSearches, {
+                id: Date.now(), companyId: me, name, query,
+                createdAt: new Date().toISOString().slice(0, 10), results: 0
+              }]);
+              alert(`Saved "${name}" to your searches.`);
+            }} />
         )}
         {view === "resources" && (
           <ResourcesView audience="company" onExit={onExit} />
@@ -1519,7 +1723,7 @@ function SearchResults({
           <div className="text-sm text-stone-700 max-w-3xl line-clamp-2">{query}</div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" icon={Save} onClick={onSaveSearch}>Save search</Button>
+          <Button variant="primary" size="sm" icon={Save} onClick={onSaveSearch}>Save this search ⚡</Button>
           <Button variant="ghost" size="sm" icon={RefreshCw} onClick={() => { setInterp(aiInterpret(query)); }}>Re-run</Button>
         </div>
       </div>
@@ -2119,10 +2323,46 @@ function ShortlistsView({ shortlists, setShortlists, onOpenCandidate }) {
   );
 }
 
-function SavedSearchesView({ searches, onRunSearch, setSearches }) {
+function SavedSearchesView({ searches, onRunSearch, setSearches, onNewSearch }) {
+  const [creating, setCreating] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newQuery, setNewQuery] = useState("");
+  function save() {
+    if (!newName.trim() || !newQuery.trim()) return;
+    setSearches(arr => [...arr, {
+      id: Date.now(), companyId: arr[0]?.companyId || 5,
+      name: newName, query: newQuery,
+      createdAt: new Date().toISOString().slice(0,10), results: 0,
+    }]);
+    setNewName(""); setNewQuery(""); setCreating(false);
+  }
   return (
     <div className="space-y-4">
-      <h2 className="text-3xl font-black font-display">My Searches</h2>
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div>
+          <h2 className="font-display text-3xl">My Searches</h2>
+          <div className="text-xs text-stone-500 mt-1">{searches.length} saved · re-runs fresh on open</div>
+        </div>
+        <div className="flex gap-2">
+          {onNewSearch && <Button icon={Search} onClick={onNewSearch}>Run a new search</Button>}
+          <Button variant="secondary" icon={Plus} onClick={() => setCreating(!creating)}>+ New saved search</Button>
+        </div>
+      </div>
+      {creating && (
+        <Card className="border-amber-300 bg-yellow-50/40">
+          <div className="text-xs uppercase tracking-wider text-amber-700 font-bold mb-2">New saved search</div>
+          <div className="space-y-3">
+            <Field label="Name this search" required><Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="e.g. Founding engineers, Series A" /></Field>
+            <Field label="Search query" hint="Plain English. Same syntax as the AI search box." required>
+              <Textarea rows={3} value={newQuery} onChange={e => setNewQuery(e.target.value)} placeholder="Founding engineer with ML infra background, comfortable being hands-on for 6 months..." />
+            </Field>
+            <div className="flex gap-2">
+              <Button size="sm" onClick={save} disabled={!newName.trim() || !newQuery.trim()}>Save search</Button>
+              <Button size="sm" variant="ghost" onClick={() => { setCreating(false); setNewName(""); setNewQuery(""); }}>Cancel</Button>
+            </div>
+          </div>
+        </Card>
+      )}
       <Card padded={false}>
         <table className="w-full">
           <thead className="bg-stone-50 border-b border-stone-200 text-xs uppercase tracking-wider text-stone-500">
@@ -2130,17 +2370,17 @@ function SavedSearchesView({ searches, onRunSearch, setSearches }) {
           </thead>
           <tbody>
             {searches.map(s => (
-              <tr key={s.id} className="border-b border-stone-200 hover:bg-stone-50 border border-stone-200">
+              <tr key={s.id} className="border-b border-stone-200 hover:bg-stone-50 cursor-pointer" onClick={() => onRunSearch(s.query)}>
                 <td className="p-3 font-bold">{s.name}</td>
                 <td className="p-3 text-xs text-stone-500 line-clamp-2 hidden sm:table-cell max-w-md">{s.query}</td>
                 <td className="p-3 text-xs text-stone-500 hidden md:table-cell">{s.createdAt}</td>
                 <td className="p-3 text-sm tabular-nums">{s.results || "—"}</td>
                 <td className="p-3 text-right">
-                  <Button size="sm" variant="ghost" icon={Search} onClick={() => onRunSearch(s.query)}>Run</Button>
+                  <Button size="sm" variant="ghost" icon={Search} onClick={(e) => { e.stopPropagation(); onRunSearch(s.query); }}>Run</Button>
                 </td>
               </tr>
             ))}
-            {searches.length === 0 && <tr><td colSpan={5} className="p-8 text-center text-stone-500 text-sm">No saved searches yet.</td></tr>}
+            {searches.length === 0 && <tr><td colSpan={5} className="p-8 text-center text-stone-500 text-sm">No saved searches yet. Hit "+ New saved search" or save a query as you run it.</td></tr>}
           </tbody>
         </table>
       </Card>
@@ -2708,11 +2948,24 @@ function JobCard({ job, company, applicationCount, onApply, onView, alreadyAppli
 // ============================================================
 // COMPANY: BROWSE DATABASE — view all active talent without running a search
 // ============================================================
-function BrowseDatabase({ onOpenProfile, companyId, shortlists, setShortlists }) {
+function BrowseDatabase({ onOpenProfile, companyId, shortlists, setShortlists, onSaveAsSearch }) {
   const [search, setSearch] = useState("");
   const [filterRole, setFilterRole] = useState("all");
   const [filterArch, setFilterArch] = useState("all");
   const [filterStage, setFilterStage] = useState("all");
+  function quickSave() {
+    if (!onSaveAsSearch) return;
+    const parts = [];
+    if (filterRole !== "all") parts.push(filterRole + " role");
+    if (filterArch !== "all") parts.push(filterArch + " archetype");
+    if (filterStage !== "all") parts.push(filterStage + " stage");
+    if (search) parts.push(`matching "${search}"`);
+    const desc = parts.length ? parts.join(", ") : "all active candidates";
+    const name = prompt("Name this saved search:", `Browse: ${desc.slice(0, 40)}`);
+    if (!name) return;
+    const queryText = `Browsed candidates · ${desc}`;
+    onSaveAsSearch({ name, query: queryText });
+  }
 
   const candidates = useMemo(() => {
     return DATA_BUNDLE.candidates.filter(c => c.vettingStatus === 'Active' && !c.declined);
@@ -2738,6 +2991,7 @@ function BrowseDatabase({ onOpenProfile, companyId, shortlists, setShortlists })
           <h2 className="font-display text-3xl">Browse the database</h2>
           <p className="text-sm text-stone-500 mt-1">{candidates.length} vetted candidates currently live. Filter, sort, or jump straight to a profile.</p>
         </div>
+        {onSaveAsSearch && <Button icon={Save} onClick={quickSave}>Save these filters as a search ⚡</Button>}
       </div>
       <Card className="!p-3">
         <div className="grid sm:grid-cols-4 gap-2">
@@ -2780,7 +3034,7 @@ function BrowseDatabase({ onOpenProfile, companyId, shortlists, setShortlists })
 // ============================================================
 // TALENT: OPEN JOBS BOARD — approved talent browses companies + jobs and applies
 // ============================================================
-function TalentJobBoard({ onExit }) {
+function TalentJobBoard({ onExit, embedded }) {
   const [search, setSearch] = useState("");
   const [filterRole, setFilterRole] = useState("all");
   const [filterStage, setFilterStage] = useState("all");
@@ -2807,22 +3061,24 @@ function TalentJobBoard({ onExit }) {
   }
 
   return (
-    <div className="min-h-screen bg-white text-black">
-      <div className="border-b border-stone-200 bg-white/95 backdrop-blur sticky top-0 z-30">
-        <div className="max-w-5xl mx-auto px-6 py-3 flex items-center justify-between">
-          <button onClick={onExit} className="flex items-center gap-2 hover:text-amber-600">
-            <Zap className="text-amber-500 fill-amber-500" size={18} />
-            <span className="font-black tracking-tight">Lighthouse</span>
-            <span className="text-stone-500 text-xs">Talent · Job Board</span>
-          </button>
-          <Button size="sm" variant="ghost" icon={ArrowLeft} onClick={onExit}>Back to apply</Button>
+    <div className={embedded ? "" : "min-h-screen bg-white text-black"}>
+      {!embedded && (
+        <div className="border-b border-stone-200 bg-white/95 backdrop-blur sticky top-0 z-30">
+          <div className="max-w-5xl mx-auto px-6 py-3 flex items-center justify-between">
+            <button onClick={onExit} className="flex items-center gap-2 hover:text-amber-600">
+              <Zap className="text-amber-500 fill-amber-500" size={18} />
+              <span className="font-black tracking-tight">Lighthouse</span>
+              <span className="text-stone-500 text-xs">Talent · Job Board</span>
+            </button>
+            <Button size="sm" variant="ghost" icon={ArrowLeft} onClick={onExit}>Back to apply</Button>
+          </div>
         </div>
-      </div>
-      <div className="max-w-5xl mx-auto px-6 py-8">
+      )}
+      <div className={embedded ? "max-w-5xl mx-auto" : "max-w-5xl mx-auto px-6 py-8"}>
         <div className="space-y-6">
           <div>
-            <Tag color="yellow"><Sparkles size={10} /> APPROVED TALENT VIEW</Tag>
-            <h1 className="font-display text-5xl md:text-6xl mt-3">Who's hiring on Lighthouse</h1>
+            <Tag color="yellow"><Sparkles size={10} /> OPEN ROLES</Tag>
+            <h1 className="font-display text-4xl md:text-5xl mt-3">Who's hiring on Lighthouse</h1>
             <p className="text-stone-500 text-lg mt-3 max-w-2xl">
               Every company here has signed a placement agreement with Zap. See open roles, apply directly, and we'll personally make the warm intro.
             </p>
@@ -3253,17 +3509,36 @@ function ResourceCard({ resource, onClick }) {
 // Multi-scope search (investor-wide / portco-scoped / project-scoped)
 // ============================================================
 function InvestorPortal({ onExit, investorId = 1 }) {
-  const [view, setView] = useState("dashboard"); // dashboard | portfolio | portco | project | search | resources
+  // Tabs: dashboard / portfolio / portco / project / search (cross-scope) / browse / intros / shortlists / searches / resources / profile
+  const [view, setView] = useState("dashboard");
   const [activePortcoId, setActivePortcoId] = useState(null);
   const [activeProjectId, setActiveProjectId] = useState(null);
-  const [searchScope, setSearchScope] = useState({ kind: "investor_wide" }); // {kind, companyId?, projectId?}
+  const [activeCandidateId, setActiveCandidateId] = useState(null);
+  const [searchScope, setSearchScope] = useState({ kind: "investor_wide" });
   const [searchQuery, setSearchQuery] = useState("");
+  // Investors get their own shortlists + saved searches, namespaced by investor id (negative companyId so they don't collide)
+  const investorAsCompanyId = -investorId; // sentinel
+  const [shortlists, setShortlists] = useState(() => DATA_BUNDLE.shortlists.map(s => ({ ...s })));
+  const [savedSearches, setSavedSearches] = useState(() => DATA_BUNDLE.savedSearches.map(s => ({ ...s })));
 
   const investor = INVESTORS.find(i => i.id === investorId);
   const myPortfolios = PORTFOLIOS.filter(p => p.investorId === investorId);
   const myCompanies = myPortfolios.map(p => DATA_BUNDLE.companies.find(c => c.id === p.companyId)).filter(Boolean);
   const myProjects = PROJECTS.filter(p => p.investorId === investorId);
-  const openProjects = myProjects.filter(p => p.status === "open");
+
+  // For features shared with company portal, scope intros / shortlists / searches across the investor's whole portfolio.
+  const myPortfolioCompanyIds = myCompanies.map(c => c.id);
+  const portfolioIntros = INTROS.filter(i => myPortfolioCompanyIds.includes(i.companyId));
+  const investorShortlists = shortlists.filter(s => s.companyId === investorAsCompanyId);
+  const investorSearches = savedSearches.filter(s => s.companyId === investorAsCompanyId);
+
+  function saveSearch({ name, query, results = 0 }) {
+    setSavedSearches([...savedSearches, {
+      id: Date.now(), companyId: investorAsCompanyId, name, query,
+      createdAt: new Date().toISOString().slice(0, 10), results,
+    }]);
+    alert(`Saved "${name}" to your searches.`);
+  }
 
   return (
     <div className="min-h-screen bg-white text-black">
@@ -3279,12 +3554,16 @@ function InvestorPortal({ onExit, investorId = 1 }) {
               {[
                 { k: "dashboard", l: "Overview", icon: Home },
                 { k: "portfolio", l: "Portfolio", icon: Building2 },
-                { k: "search", l: "Find candidates", icon: Search },
-                { k: "resources", l: "Resources", icon: BookOpenCheck },
+                { k: "search", l: "AI Search", icon: Search },
+                { k: "browse", l: "Browse", icon: Database },
+                { k: "intros", l: "Intros", icon: Coffee },
+                { k: "searches", l: "My Searches", icon: BookOpenCheck },
+                { k: "shortlists", l: "Shortlists", icon: Star },
+                { k: "resources", l: "Resources", icon: FileText },
               ].map(it => (
                 <button key={it.k} onClick={() => setView(it.k)}
-                  className={`px-3 py-1.5 text-sm rounded-lg transition flex items-center gap-1.5 ${view === it.k ? "bg-stone-100 text-amber-600" : "text-stone-500 hover:text-black"}`}>
-                  <it.icon size={14} />{it.l}
+                  className={`px-2.5 py-1.5 text-xs rounded-lg transition flex items-center gap-1.5 ${view === it.k ? "bg-stone-100 text-amber-600" : "text-stone-500 hover:text-black"}`}>
+                  <it.icon size={13} />{it.l}
                 </button>
               ))}
             </nav>
@@ -3310,9 +3589,88 @@ function InvestorPortal({ onExit, investorId = 1 }) {
           onBack={() => setView("dashboard")} />}
         {view === "search" && <InvestorSearch investor={investor} portfolios={myPortfolios} projects={myProjects}
           scope={searchScope} setScope={setSearchScope} query={searchQuery} setQuery={setSearchQuery}
-          onAssign={() => alert("Assigned to project (mock).")} />}
+          onAssign={() => alert("Assigned to project (mock).")}
+          onSaveSearch={(q) => saveSearch({ name: prompt("Name this search:") || `Investor search ${investorSearches.length + 1}`, query: q })} />}
+        {view === "browse" && (
+          <BrowseDatabase
+            onOpenProfile={(id) => { setActiveCandidateId(id); setView("profile"); }}
+            companyId={investorAsCompanyId} shortlists={shortlists} setShortlists={setShortlists}
+            onSaveAsSearch={saveSearch} />
+        )}
+        {view === "intros" && (
+          <InvestorIntrosView portfolios={myPortfolios} companies={myCompanies} intros={portfolioIntros}
+            onOpenCandidate={(id) => { setActiveCandidateId(id); setView("profile"); }} />
+        )}
+        {view === "shortlists" && (
+          <ShortlistsView shortlists={investorShortlists} setShortlists={setShortlists}
+            onOpenCandidate={(id) => { setActiveCandidateId(id); setView("profile"); }} />
+        )}
+        {view === "searches" && (
+          <SavedSearchesView searches={investorSearches} setSearches={setSavedSearches}
+            onRunSearch={(q) => { setSearchQuery(q); setView("search"); }}
+            onNewSearch={() => setView("search")} />
+        )}
+        {view === "profile" && activeCandidateId && (
+          <CandidateProfileView candidate={DATA_BUNDLE.candidates.find(c => c.id === activeCandidateId)}
+            onBack={() => setView("browse")}
+            interp={{ skills: [], archetypeLean: null, location: "Open" }}
+            onShortlist={(slId) => {
+              setShortlists(sls => sls.map(s => s.id === slId
+                ? { ...s, candidateIds: [...new Set([...s.candidateIds, activeCandidateId])] } : s));
+              alert("Added to shortlist.");
+            }}
+            shortlists={investorShortlists} />
+        )}
         {view === "resources" && <ResourcesView audience="company" onExit={onExit} />}
       </div>
+    </div>
+  );
+}
+
+// Investor's intros view — groups by portfolio company
+function InvestorIntrosView({ portfolios, companies, intros, onOpenCandidate }) {
+  return (
+    <div className="space-y-4">
+      <div>
+        <h2 className="font-display text-3xl">Intros across the portfolio</h2>
+        <p className="text-sm text-stone-500 mt-1">Every warm intro Zap has made into your portfolio companies — grouped by company.</p>
+      </div>
+      {companies.map(company => {
+        const companyIntros = intros.filter(i => i.companyId === company.id);
+        if (companyIntros.length === 0) return null;
+        return (
+          <Card key={company.id}>
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <div className="font-bold">{company.name}</div>
+                <div className="text-xs text-stone-500">{company.stage} · {company.industry}</div>
+              </div>
+              <Tag color="yellow">{companyIntros.length} intros</Tag>
+            </div>
+            <div className="space-y-2">
+              {companyIntros.slice(0, 5).map(i => {
+                const c = DATA_BUNDLE.candidates.find(cn => cn.id === i.candidateId);
+                if (!c) return null;
+                return (
+                  <div key={i.id} onClick={() => onOpenCandidate(c.id)}
+                       className="flex items-center gap-3 p-2 border border-stone-200 rounded-lg hover:border-amber-400 cursor-pointer">
+                    <Avatar candidate={c} size={32} />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-bold text-sm">{c.firstName} {c.lastName}</div>
+                      <div className="text-xs text-stone-500 truncate">{c.currentRole} · introduced {i.introducedAt}</div>
+                    </div>
+                    <Tag size="sm">{i.status}</Tag>
+                  </div>
+                );
+              })}
+              {companyIntros.length > 5 && <div className="text-xs text-stone-500 text-center pt-1">+{companyIntros.length - 5} more</div>}
+            </div>
+          </Card>
+        );
+      })}
+      {intros.length === 0 && (
+        <Card className="text-center py-12 text-sm text-stone-500">No intros yet across the portfolio.</Card>
+      )}
     </div>
   );
 }
@@ -3562,7 +3920,7 @@ function ProjectDetail({ projectId, onBack }) {
   );
 }
 
-function InvestorSearch({ investor, portfolios, projects, scope, setScope, query, setQuery, onAssign }) {
+function InvestorSearch({ investor, portfolios, projects, scope, setScope, query, setQuery, onAssign, onSaveSearch }) {
   const [results, setResults] = useState([]);
   const [searched, setSearched] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -3623,9 +3981,12 @@ function InvestorSearch({ investor, portfolios, projects, scope, setScope, query
 
       {searched && !loading && (
         <div className="space-y-3">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <div className="text-sm text-stone-500"><span className="font-bold text-amber-600">{results.length}</span> ranked candidates</div>
-            {scope.kind === "investor_wide" && <div className="text-xs text-stone-500">Each result can be assigned to any open project</div>}
+            <div className="flex items-center gap-2">
+              {onSaveSearch && <Button size="sm" icon={Save} onClick={() => onSaveSearch(query)}>Save this search ⚡</Button>}
+              {scope.kind === "investor_wide" && <div className="text-xs text-stone-500">Each result can be assigned to any open project</div>}
+            </div>
           </div>
           {results.map(({ candidate, score }) => (
             <Card key={candidate.id} className="hover:border-amber-400">
@@ -3880,7 +4241,7 @@ function SignedInShell({ user, logout }) {
   const [companyId, setCompanyId] = useState(user.companyId || 5);
   return (
     <>
-      {(mode === "candidate" || mode === "talent") && <CandidateIntakeFlow onExit={logout} />}
+      {(mode === "candidate" || mode === "talent") && <TalentPortal onExit={logout} candidateId={user.candidateId || DEMO_TALENT_CANDIDATE_ID} />}
       {mode === "company" && <CompanyPortal preselectedCompanyId={companyId} onExit={logout} />}
       {mode === "investor" && <InvestorPortal onExit={logout} investorId={user.investorId || 1} />}
       {mode === "admin" && <AdminPortal onExit={logout} />}
