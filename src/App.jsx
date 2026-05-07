@@ -20,6 +20,7 @@ import {
 // DATA IMPORTS — 154 candidates, 18 companies, 93 intros, 24 jobs, 203 applications
 // ============================================================
 import { DATA_BUNDLE, INTROS, JOBS, APPLICATIONS } from './data.js';
+import { AuthProvider, useAuth, LoginScreen } from './auth.jsx';
 
 // ============================================================
 // CONSTANTS
@@ -606,7 +607,7 @@ function LandingPage({ onPick }) {
         </div>
         <div className="grid md:grid-cols-3 gap-4">
           {[
-            { key: "candidate", label: "I'm a candidate", desc: "Apply to be in Zap's database.", icon: UserPlus, hint: "~7 min, optional 5-min deep dive" },
+            { key: "candidate", label: "I'm a candidate", desc: "Apply to be in Zap's database.", icon: UserPlus, hint: "Optional deep dive at the end" },
             { key: "company", label: "I'm hiring", desc: "Search vetted talent in plain English.", icon: Search, hint: "Login as acme@lt.house" },
             { key: "admin", label: "Admin (Zap)", desc: "Manage the database, vetting, & insights.", icon: Shield, hint: "Internal tool" },
           ].map(opt => (
@@ -747,7 +748,7 @@ function CandidateLanding({ onStart, onBrowseJobs }) {
       <Card className="bg-stone-50 border border-stone-200">
         <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-2">What happens next</div>
         <div className="space-y-1.5 text-sm text-stone-700">
-          <div>1. Zap reviews your application within 5 business days.</div>
+          <div>1. Zap reviews every application personally.</div>
           <div>2. If approved, we'll set up coffee or a Zoom to get to know you in person.</div>
           <div>3. Once vetted, you're added to the live database for startups to find.</div>
           <div>4. We make warm intros directly — you don't apply to roles, founders come to you.</div>
@@ -756,7 +757,7 @@ function CandidateLanding({ onStart, onBrowseJobs }) {
       <div className="text-center space-y-3 pt-4">
         <Button size="lg" icon={Zap} onClick={onStart}>Start your application</Button>
         <div className="text-xs text-stone-500">
-          Required: ~7 minutes. Optional 5-minute archetype dive available at the end.
+          A few minutes. Optional archetype dive available at the end.
         </div>
         {onBrowseJobs && (
           <div className="pt-2">
@@ -942,11 +943,26 @@ function BasicsForm({ profile, update, onNext, onBack }) {
           <Field label="When are you actively looking?">
             <Select value={profile.timing} onChange={v => update({ timing: v })} options={TIMING_OPTIONS} />
           </Field>
-          <Field label="Salary expectations" hint={profile.salaryOptOut ? "Hidden — will be discussed in the vetting call." : `${profile.salaryMin}K — ${profile.salaryMax}K USD`}>
-            {!profile.salaryOptOut && (
-              <RangeSlider min={50} max={300} value={[profile.salaryMin, profile.salaryMax]}
-                onChange={v => update({ salaryMin: v[0], salaryMax: v[1] })} format={v => `$${v}K`} />
-            )}
+          <Field label="Salary expectations" hint={profile.salaryOptOut ? "Hidden — will be discussed in the vetting call." : `$${profile.salaryMin}K – $${profile.salaryMax}K`}>
+            {!profile.salaryOptOut && (() => {
+              const RANGES = [50, 60, 70, 80, 90, 100, 115, 130, 145, 160, 180, 200, 225, 250, 275, 300, 350, 400];
+              return (
+                <div className="grid grid-cols-2 gap-2">
+                  <Select value={profile.salaryMin}
+                    onChange={v => {
+                      const next = +v;
+                      update({ salaryMin: next, salaryMax: Math.max(profile.salaryMax, next) });
+                    }}
+                    options={RANGES.map(n => ({ value: n, label: `$${n}K` }))} />
+                  <Select value={profile.salaryMax}
+                    onChange={v => {
+                      const next = +v;
+                      update({ salaryMax: next, salaryMin: Math.min(profile.salaryMin, next) });
+                    }}
+                    options={RANGES.filter(n => n >= profile.salaryMin).map(n => ({ value: n, label: `$${n}K${n === 400 ? "+" : ""}` }))} />
+                </div>
+              );
+            })()}
             <label className="flex items-center gap-2 text-sm text-stone-500 mt-2 cursor-pointer">
               <input type="checkbox" checked={profile.salaryOptOut}
                 onChange={e => update({ salaryOptOut: e.target.checked })} className="accent-yellow-400" />
@@ -983,18 +999,17 @@ function BasicsForm({ profile, update, onNext, onBack }) {
 
 function VibeCheck({ profile, updateVibe, onNext, onBack }) {
   const [sub, setSub] = useState(0);
+  // Trimmed to 2 per v2 spec — karaoke and future-self joke removed.
   const questions = [
     { key: "nerdAbout", q: "What's something you nerd out about that has nothing to do with work?", placeholder: "Photography, sourdough, marathon running..." },
     { key: "managerWords", q: "If your last manager described you in 3 words, what would they be?", placeholder: "scrappy, organized, funny" },
-    { key: "futureSelfJoke", q: "If your future self could joke about you today, what would they say?", placeholder: "You used to think calendar invites were optional..." },
-    { key: "karaoke", q: "What's your go-to karaoke song? 🎵", placeholder: "Wagon Wheel — Old Crow Medicine Show" },
   ];
   const cur = questions[sub];
   return (
     <div className="space-y-8 min-h-[60vh] flex flex-col">
       <div>
-        <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-2">Step 3 · Vibe check ({sub + 1}/4)</div>
-        <h2 className="text-3xl font-black font-display">Quick warm-up.</h2>
+        <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-2">Step 3 · About you ({sub + 1}/{questions.length})</div>
+        <h2 className="text-3xl font-black font-display">A couple about you.</h2>
         <p className="text-stone-500 mt-1">No wrong answers.</p>
       </div>
       <div className="flex-1 flex items-center">
@@ -1037,7 +1052,7 @@ function ArchetypeAssessment({ onSkip, onComplete, onBack }) {
         </div>
         <h2 className="text-4xl md:text-5xl font-black font-display">Want to go deeper?</h2>
         <p className="text-stone-700 text-lg max-w-2xl">
-          Spend 5 more minutes telling us how you actually like to work. We'll plot you on our talent map and assign you an archetype that helps startups understand at a glance whether you're the right kind of person for what they're building.
+          Tell us how you actually like to work. We'll plot you on our talent map and assign you an archetype that helps startups understand at a glance whether you're the right kind of person for what they're building.
         </p>
         <div className="flex flex-col sm:flex-row gap-3 pt-2">
           <Button size="lg" icon={Zap} onClick={() => setStage("running")}>Yes, let's do it</Button>
@@ -1167,7 +1182,7 @@ function Confirmation({ profile, onExit, onTakeAssessment, onBrowseJobs }) {
       <CheckCircle2 size={64} className="text-amber-500 mx-auto" />
       <h2 className="text-5xl font-black font-display">You're on the list <Zap className="inline text-amber-500 fill-yellow-400" /></h2>
       <p className="text-stone-700 text-lg max-w-xl mx-auto">
-        Zap reviews every application personally. You'll hear from us within 5 business days. If approved, we'll set up coffee or a Zoom to get to know you in person — that's how every candidate gets into the live database.
+        Zap reviews every application personally. We'll be in touch. If you're a fit, we'll set up coffee or a Zoom to get to know you in person — that's how every candidate gets into the live database.
       </p>
       {a && (
         <Card className="text-left max-w-md mx-auto">
@@ -1184,7 +1199,7 @@ function Confirmation({ profile, onExit, onTakeAssessment, onBrowseJobs }) {
       {!profile.hasAssessment && (
         <Card className="max-w-md mx-auto bg-stone-50 border border-yellow-200">
           <div className="text-sm">
-            Want to add your archetype later? It takes 5 minutes.
+            Want to add your archetype later?
             <button onClick={onTakeAssessment} className="block mt-2 text-amber-500 font-bold hover:underline">Take the assessment →</button>
           </div>
         </Card>
@@ -1193,7 +1208,7 @@ function Confirmation({ profile, onExit, onTakeAssessment, onBrowseJobs }) {
         <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-3">What's next</div>
         <div className="space-y-2 text-sm">
           {[
-            ["Application Review", "Within 5 business days"],
+            ["Application Review", "Personally reviewed by Zap"],
             ["Vetting Conversation", "Coffee or Zoom"],
             ["Database Live", "We start matching you to roles"],
             ["Warm Intros", "Founders come to you"],
@@ -2528,12 +2543,57 @@ function AdminHiring() {
 
 function AdminSettings() {
   const [autoPublish, setAutoPublish] = useState(false);
+  const [mockDataEnabled, setMockDataEnabled] = useState(true);
+  const [outboundEmailMode, setOutboundEmailMode] = useState("disabled"); // disabled | test_mode | enabled
   const [requiredFields, setRequiredFields] = useState(["firstName", "email", "currentRole", "skills"]);
   const allFields = ["firstName", "lastName", "email", "phone", "linkedin", "currentRole", "currentCompany", "yearsExperience", "location", "skills", "salary", "stagePreference"];
 
   return (
     <div className="space-y-4">
-      <h2 className="text-2xl font-black">Talent Settings</h2>
+      <h2 className="font-display text-2xl">Talent Settings</h2>
+      <Card className={mockDataEnabled ? "border-yellow-300 bg-yellow-50/40" : ""}>
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div>
+            <div className="text-xs uppercase tracking-wider text-amber-700 font-bold mb-1 flex items-center gap-2">
+              <Sparkles size={12} /> Demo / mock data
+            </div>
+            <div className="text-sm text-stone-700">
+              {mockDataEnabled
+                ? <>Demo mode is <span className="font-bold text-amber-700">ON</span>. Mock candidates with rich profiles populate the company and investor portals.</>
+                : <>Demo mode is <span className="font-bold text-stone-700">OFF</span>. Only the real Airtable seed candidates are visible.</>}
+            </div>
+            <div className="text-xs text-stone-500 mt-1">Real seed candidates from the Airtable import are always visible in admin regardless.</div>
+          </div>
+          <button onClick={() => setMockDataEnabled(!mockDataEnabled)}
+            className={`shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-full font-bold text-sm transition ${mockDataEnabled ? "bg-amber-500 text-white hover:bg-amber-600" : "bg-stone-200 text-stone-700 hover:bg-stone-300"}`}>
+            {mockDataEnabled ? "Turn OFF mock data" : "Turn ON mock data"}
+          </button>
+        </div>
+      </Card>
+      <Card className={outboundEmailMode === "enabled" ? "border-emerald-300 bg-emerald-50/40" : outboundEmailMode === "test_mode" ? "border-orange-300 bg-orange-50/40" : "border-rose-300 bg-rose-50/40"}>
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div className="flex-1">
+            <div className="text-xs uppercase tracking-wider font-bold mb-1 flex items-center gap-2"
+              style={{ color: outboundEmailMode === "enabled" ? "#047857" : outboundEmailMode === "test_mode" ? "#c2410c" : "#be123c" }}>
+              <Mail size={12} /> Outbound emails master toggle
+            </div>
+            <div className="text-sm text-stone-700">
+              {outboundEmailMode === "disabled" && "All outbound emails are DISABLED. Send actions queue but don't fire. The platform is in build/preview mode."}
+              {outboundEmailMode === "test_mode" && "TEST MODE — emails only fire to the allowlist (Lorenzo, Zap, Mike). Use this to verify magic links and onboarding copy."}
+              {outboundEmailMode === "enabled" && "All outbound emails are ENABLED. Every queued and going-forward send will fire. This is the live state."}
+            </div>
+            <div className="text-xs text-stone-500 mt-1.5">Affects Re-Onboarding Queue, saved-search notifications, candidate confirmations, and bulk import sends.</div>
+          </div>
+          <div className="flex flex-col gap-1.5 shrink-0">
+            {["disabled", "test_mode", "enabled"].map(m => (
+              <button key={m} onClick={() => setOutboundEmailMode(m)}
+                className={`text-xs font-bold px-3 py-1.5 rounded-lg border transition ${outboundEmailMode === m ? "bg-slate-900 text-yellow-300 border-slate-900" : "bg-white text-stone-700 border-stone-300 hover:border-stone-400"}`}>
+                {m === "disabled" ? "DISABLED" : m === "test_mode" ? "TEST MODE" : "ENABLED"}
+              </button>
+            ))}
+          </div>
+        </div>
+      </Card>
       <Card>
         <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-3">Defaults</div>
         <label className="flex items-center gap-2 text-sm cursor-pointer">
@@ -2969,47 +3029,51 @@ function AdminJobBoard({ onOpenCandidate }) {
 // ============================================================
 function ModeSwitcher({ mode, setMode, companyId, setCompanyId }) {
   const [open, setOpen] = useState(false);
+  const { logout, user } = useAuth();
   const modes = [
-    { k: "candidate", label: "Talent", icon: UserPlus, desc: "Apply & explore the candidate flow" },
-    { k: "company", label: "Company", icon: Search, desc: "Search talent & see your intros" },
-    { k: "admin", label: "Admin", icon: Shield, desc: "Zap's database & vetting tools" },
+    { k: "candidate", label: "Talent", icon: UserPlus, desc: "Candidate flow" },
+    { k: "company", label: "Company", icon: Search, desc: "Search talent & intros" },
+    { k: "investor", label: "Investor", icon: Briefcase, desc: "Portfolio & projects" },
+    { k: "admin", label: "Admin", icon: Shield, desc: "Database & vetting" },
   ];
   const current = modes.find(m => m.k === mode);
   return (
     <>
-      {/* Trigger pill — bottom right */}
+      {/* Trigger pill — solid dark navy with strong contrast */}
       <button onClick={() => setOpen(!open)}
-        className="fixed bottom-5 right-5 z-50 bg-yellow-400 text-black hover:bg-yellow-300 rounded-full pl-3 pr-4 py-2.5 shadow-2xl flex items-center gap-2 font-bold text-sm transition-all">
-        <span className="w-7 h-7 bg-white border border-stone-200 rounded-full flex items-center justify-center"><Zap size={14} className="text-amber-500 fill-yellow-400" /></span>
-        <span>Viewing: {current?.label || "—"}</span>
+        className="fixed bottom-5 right-5 z-50 bg-slate-900 text-yellow-300 hover:bg-slate-800 rounded-full pl-3 pr-4 py-2.5 shadow-2xl flex items-center gap-2 font-bold text-sm transition-all border border-slate-800">
+        <span className="w-7 h-7 bg-yellow-400 rounded-full flex items-center justify-center"><Zap size={14} className="text-slate-900 fill-slate-900" /></span>
+        <span>Admin · {current?.label || "—"}</span>
         <ChevronUp size={14} className={`transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
       {open && (
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="fixed bottom-20 right-5 z-50 w-80 bg-white border border-stone-300 rounded-2xl shadow-2xl p-2">
+          <div className="fixed inset-0 z-40 bg-black/30" onClick={() => setOpen(false)} />
+          <div className="fixed bottom-20 right-5 z-50 w-80 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl p-2 text-slate-100">
             <div className="p-3 pb-2">
-              <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-1">Switch view</div>
-              <div className="text-xs text-stone-500">Demo navigator — flip between the three sides of the platform.</div>
+              <div className="text-xs uppercase tracking-wider text-yellow-300 font-bold mb-1">Admin · switch view</div>
+              <div className="text-xs text-slate-400">Flip between the four sides of the platform. Admin-only.</div>
             </div>
             {modes.map(m => (
               <button key={m.k} onClick={() => { setMode(m.k); setOpen(false); }}
-                className={`w-full text-left flex items-start gap-3 p-3 rounded-xl transition ${mode === m.k ? "bg-yellow-100 border border-yellow-300" : "hover:bg-stone-100 border border-transparent"}`}>
-                <m.icon size={20} className={mode === m.k ? "text-amber-500" : "text-stone-500"} />
+                className={`w-full text-left flex items-start gap-3 p-3 rounded-xl transition ${mode === m.k ? "bg-yellow-400 text-slate-900" : "hover:bg-slate-800 text-slate-100"}`}>
+                <m.icon size={20} />
                 <div className="flex-1 min-w-0">
-                  <div className="font-bold text-sm flex items-center gap-2">
-                    {m.label}
-                    {mode === m.k && <Tag color="yellow" size="sm">current</Tag>}
-                  </div>
-                  <div className="text-xs text-stone-500 mt-0.5">{m.desc}</div>
+                  <div className="font-bold text-sm flex items-center gap-2">{m.label}</div>
+                  <div className={`text-xs mt-0.5 ${mode === m.k ? "text-slate-700" : "text-slate-400"}`}>{m.desc}</div>
                 </div>
               </button>
             ))}
-            <div className="p-3 pt-2 mt-1 border-t border-stone-200">
-              <div className="text-[10px] uppercase tracking-wider text-stone-500 font-bold mb-1">Acting as company</div>
-              <Select value={companyId} onChange={v => setCompanyId(+v)} className="text-xs"
-                options={DATA_BUNDLE.companies.map(c => ({ value: c.id, label: `${c.name} · ${c.stage}` }))} />
-              <div className="text-[10px] text-stone-500 mt-1.5">Affects which company's intros & shortlists you see in Company view.</div>
+            <div className="p-3 pt-2 mt-1 border-t border-slate-800">
+              <div className="text-[10px] uppercase tracking-wider text-slate-500 font-bold mb-1">Acting as company</div>
+              <select value={companyId} onChange={e => setCompanyId(+e.target.value)}
+                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-yellow-400">
+                {DATA_BUNDLE.companies.map(c => <option key={c.id} value={c.id}>{c.name} · {c.stage}</option>)}
+              </select>
+            </div>
+            <div className="p-3 pt-2 mt-1 border-t border-slate-800 flex items-center justify-between">
+              <div className="text-[10px] text-slate-500">Signed in as <span className="font-mono">{user?.email}</span></div>
+              <button onClick={logout} className="text-xs text-yellow-300 hover:underline">Sign out</button>
             </div>
           </div>
         </>
@@ -3126,15 +3190,47 @@ function IntrosView({ companyId, onOpenCandidate }) {
 // TOP-LEVEL APP — ModeSwitcher-driven router
 // ============================================================
 export default function App() {
-  // No more "landing" page — the user starts in a real view and toggles via the floating switcher.
-  const [mode, setMode] = useState("candidate");
-  const [companyId, setCompanyId] = useState(5); // SoundHealth default
+  return (
+    <AuthProvider>
+      <AuthedApp />
+    </AuthProvider>
+  );
+}
+
+function AuthedApp() {
+  const { user, logout } = useAuth();
+  // Mode is admin-controlled only; non-admin roles are pinned to their own view.
+  const initialMode = user?.role === "admin" ? "candidate" : (user?.role || "candidate");
+  const [mode, setMode] = useState(initialMode);
+  const [companyId, setCompanyId] = useState(user?.companyId || 5);
+
+  if (!user) return <LoginScreen />;
+
+  // Role-based default routing — admins see the ModeSwitcher and can flip; others are pinned.
+  const isAdmin = user.role === "admin";
+  const effectiveMode = isAdmin ? mode : user.role;
+
   return (
     <>
-      {mode === "candidate" && <CandidateIntakeFlow onExit={() => setMode("candidate")} />}
-      {mode === "company" && <CompanyPortal preselectedCompanyId={companyId} onExit={() => setMode("candidate")} />}
-      {mode === "admin" && <AdminPortal onExit={() => setMode("candidate")} />}
-      <ModeSwitcher mode={mode} setMode={setMode} companyId={companyId} setCompanyId={setCompanyId} />
+      {effectiveMode === "candidate" || effectiveMode === "talent" ? <CandidateIntakeFlow onExit={logout} /> : null}
+      {effectiveMode === "company" && <CompanyPortal preselectedCompanyId={companyId} onExit={logout} />}
+      {effectiveMode === "investor" && <InvestorComingSoon onExit={logout} />}
+      {effectiveMode === "admin" && <AdminPortal onExit={logout} />}
+      {/* ModeSwitcher only renders for admin users */}
+      {isAdmin && <ModeSwitcher mode={mode} setMode={setMode} companyId={companyId} setCompanyId={setCompanyId} />}
     </>
+  );
+}
+
+function InvestorComingSoon({ onExit }) {
+  return (
+    <div className="min-h-screen bg-white text-black flex items-center justify-center p-6">
+      <div className="max-w-md text-center space-y-4">
+        <div className="text-6xl">💼</div>
+        <h1 className="font-display text-3xl">Investor portal · coming next</h1>
+        <p className="text-stone-500">The investor / portfolio company view is the next major build. For now, sign in as <span className="font-mono">company@lt.house</span> or <span className="font-mono">zap@lt.house</span> to explore the working sections.</p>
+        <Button variant="secondary" onClick={onExit}>Sign out</Button>
+      </div>
+    </div>
   );
 }
