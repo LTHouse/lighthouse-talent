@@ -317,10 +317,15 @@ function TalentIntakeFlow({ user, logout }) {
     hasStartupExperience: null,
     hasTechExperience: null,
     currentRole: "", currentCompany: "", skills: [],
+    hiddenFromCompanies: [],
   });
   function update(patch) { setProfile(p => ({ ...p, ...patch })); }
   function next() { setStep(s => s + 1); }
   function back() { setStep(s => Math.max(1, s - 1)); }
+  // Browser back / swipe-back navigates within the intake. Step 1 back logs out
+  // (returns to the public landing); step 2 back returns to step 1.
+  useBackHandler(step === 1, () => logout());
+  useBackHandler(step === 2, () => setStep(1));
 
   return (
     <div className="min-h-screen bg-white text-black">
@@ -482,6 +487,16 @@ function TalentBasics({ profile, update, onSubmit, onBack }) {
             )}
           </Field>
         </div>
+        <div className="border-t border-stone-200 pt-4">
+          <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-3">Privacy <span className="ml-1 normal-case text-stone-400 font-normal">— optional</span></div>
+          <Field label="Hide my profile from any companies?" hint="They won't see your profile or be able to request an intro. Add current employer, competitors, anyone.">
+            <ChipInput
+              value={profile.hiddenFromCompanies}
+              onChange={v => update({ hiddenFromCompanies: v })}
+              placeholder="Type a company and press Enter"
+            />
+          </Field>
+        </div>
       </Card>
       <div className="flex justify-between pt-2">
         <Button variant="ghost" icon={ChevronLeft} onClick={onBack}>Back</Button>
@@ -491,36 +506,59 @@ function TalentBasics({ profile, update, onSubmit, onBack }) {
   );
 }
 
+// Comma/Enter-separated chip input. Free-text — no autocomplete against a backend
+// list because the talent might name companies we don't know about yet.
+function ChipInput({ value = [], onChange, placeholder }) {
+  const [draft, setDraft] = useState("");
+  function add(raw) {
+    const next = raw.split(",").map(s => s.trim()).filter(Boolean);
+    if (next.length === 0) return;
+    const merged = [...value];
+    next.forEach(n => { if (!merged.includes(n)) merged.push(n); });
+    onChange(merged);
+    setDraft("");
+  }
+  function remove(idx) {
+    const copy = [...value];
+    copy.splice(idx, 1);
+    onChange(copy);
+  }
+  function keyDown(e) {
+    if (e.key === "Enter" || e.key === ",") { e.preventDefault(); add(draft); }
+    else if (e.key === "Backspace" && !draft && value.length > 0) { remove(value.length - 1); }
+  }
+  return (
+    <div className="w-full bg-white border border-stone-300 rounded-lg px-2.5 py-2 text-sm focus-within:border-black">
+      <div className="flex flex-wrap gap-1.5 items-center">
+        {value.map((c, i) => (
+          <span key={c + i} className="inline-flex items-center gap-1 bg-stone-100 border border-stone-300 rounded-full pl-2.5 pr-1 py-0.5 text-xs">
+            {c}
+            <button type="button" onClick={() => remove(i)} className="text-stone-400 hover:text-black w-4 h-4 flex items-center justify-center"><X size={11} /></button>
+          </span>
+        ))}
+        <input
+          value={draft}
+          onChange={e => setDraft(e.target.value)}
+          onKeyDown={keyDown}
+          onBlur={() => draft.trim() && add(draft)}
+          placeholder={value.length === 0 ? placeholder : ""}
+          className="flex-1 min-w-[140px] bg-transparent outline-none py-1"
+        />
+      </div>
+    </div>
+  );
+}
+
 // Drag-to-rank motivations step removed. Intake is now LinkedIn → Essentials → Confirmation.
 
 function TalentConfirmation({ profile, onExit }) {
   return (
-    <div className="space-y-6 text-center">
-      <CheckCircle2 size={64} className="text-amber-500 mx-auto" />
-      <h2 className="text-5xl font-display">You're on the list <Zap className="inline text-amber-500 fill-amber-500" /></h2>
-      <p className="text-stone-700 text-lg max-w-xl mx-auto">
-        Zap reviews every application personally. We'll be in touch.
+    <div className="space-y-6 text-center py-12">
+      <CheckCircle2 size={56} className="text-amber-500 mx-auto" />
+      <p className="text-stone-700 text-lg max-w-md mx-auto leading-relaxed">
+        You're now part of the exclusive founder talent community. We'll get back to you if we find a match.
       </p>
-      <Card className="text-left max-w-md mx-auto">
-        <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-3">What's next</div>
-        <div className="space-y-2 text-sm">
-          {[
-            ["Application Review", "Personally reviewed by Zap"],
-            ["Vetting Conversation", "Coffee or Zoom"],
-            ["Database Live", "We start matching you to roles"],
-            ["Warm Intros", "Founders come to you"],
-          ].map(([t, d], i) => (
-            <div key={i} className="flex items-center gap-3">
-              <div className="w-6 h-6 rounded-full bg-yellow-400 text-black font-bold text-xs flex items-center justify-center flex-shrink-0">{i + 1}</div>
-              <div><div className="font-bold">{t}</div><div className="text-xs text-stone-500">{d}</div></div>
-            </div>
-          ))}
-        </div>
-      </Card>
-      <div className="pt-4">
-        <Button variant="secondary" icon={Mail} onClick={() => alert("Mock: subscribed to Zap's Wrap.")}>Subscribe to Zap's Wrap</Button>
-      </div>
-      <button onClick={onExit} className="text-sm text-stone-500 hover:text-amber-600">Sign out</button>
+      <button onClick={onExit} className="text-sm text-stone-500 hover:text-amber-600 underline underline-offset-4">Sign out</button>
     </div>
   );
 }
