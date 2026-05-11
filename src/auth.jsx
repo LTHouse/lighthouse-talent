@@ -84,11 +84,22 @@ export function LoginScreen() {
   const [password, setPassword] = useState("password");
   const [err, setErr] = useState(null);
 
+  // Direct-apply path: log in as talent + flag the intake to skip its landing screen
+  // and drop the user straight into the LinkedIn step.
+  async function applyAsTalentDirect() {
+    if (typeof window !== "undefined") window.__lt_skip_talent_landing = true;
+    try { await login({ email: "talent@lt.house", password: "password" }); }
+    catch (ex) { setErr(ex.message); }
+  }
+
   if (view === "landing") {
-    return <PublicLanding onSignIn={(preset) => {
-      if (preset) { setRole(preset); setEmail(PRESET_FOR_TAB[preset]); }
-      setView("login");
-    }} />;
+    return <PublicLanding
+      onSignIn={(preset) => {
+        if (preset) { setRole(preset); setEmail(PRESET_FOR_TAB[preset]); }
+        setView("login");
+      }}
+      onApplyAsTalent={applyAsTalentDirect}
+    />;
   }
 
   function pickRole(k) {
@@ -160,7 +171,7 @@ export function LoginScreen() {
 
 // Public landing page — mirrors lt.house exactly: ⚡ icon, Syne headline, descriptive paragraph,
 // hr dividers, two-column emoji-led list sections, "Sign in" CTAs targeted to each role.
-function PublicLanding({ onSignIn }) {
+function PublicLanding({ onSignIn, onApplyAsTalent }) {
   return (
     <div className="min-h-screen bg-white text-black">
       {/* Top bar */}
@@ -223,7 +234,7 @@ function PublicLanding({ onSignIn }) {
               <div className="flex items-start gap-3"><span className="text-xl">☕</span><span>Vetting call with Zap</span></div>
               <div className="flex items-start gap-3"><span className="text-xl">🤝</span><span>Founders come to you</span></div>
             </div>
-            <button onClick={() => onSignIn("talent")} className="mt-5 inline-flex items-center gap-2 font-bold text-amber-600 hover:text-amber-700">Apply to the network →</button>
+            <button onClick={onApplyAsTalent} className="mt-5 inline-flex items-center gap-2 font-bold text-amber-600 hover:text-amber-700">Apply to the network →</button>
           </div>
           <div>
             <h3 className="text-lg font-display font-bold mb-3">If you're hiring</h3>
@@ -239,27 +250,16 @@ function PublicLanding({ onSignIn }) {
 
         <hr className="border-stone-200" />
 
-        {/* For investors */}
-        <div className="grid md:grid-cols-2 gap-x-12 gap-y-8">
-          <div>
-            <h3 className="text-lg font-display font-bold mb-3">For investors</h3>
-            <div className="space-y-2.5 text-base">
-              <div className="flex items-start gap-3"><span className="text-xl">📁</span><span>Search on behalf of any portco</span></div>
-              <div className="flex items-start gap-3"><span className="text-xl">🏷️</span><span>Tag every search by portfolio company</span></div>
-              <div className="flex items-start gap-3"><span className="text-xl">💼</span><span>Manage shortlists across your portfolio</span></div>
-              <div className="flex items-start gap-3"><span className="text-xl">🤝</span><span>Same warm-intro flow through Zap</span></div>
-            </div>
-            <button onClick={() => onSignIn("investor")} className="mt-5 inline-flex items-center gap-2 font-bold text-amber-600 hover:text-amber-700">Investor sign in →</button>
+        {/* For investors — full width, single column, kept simple */}
+        <div className="max-w-xl">
+          <h3 className="text-lg font-display font-bold mb-3">For investors</h3>
+          <div className="space-y-2.5 text-base">
+            <div className="flex items-start gap-3"><span className="text-xl">📁</span><span>Search on behalf of any portco</span></div>
+            <div className="flex items-start gap-3"><span className="text-xl">🏷️</span><span>Tag every search by portfolio company</span></div>
+            <div className="flex items-start gap-3"><span className="text-xl">💼</span><span>Manage shortlists across your portfolio</span></div>
+            <div className="flex items-start gap-3"><span className="text-xl">🤝</span><span>Same warm-intro flow through Zap</span></div>
           </div>
-          <div>
-            <h3 className="text-lg font-display font-bold mb-3">Lighthouse, beyond Talent</h3>
-            <div className="space-y-2.5 text-base">
-              <div className="flex items-start gap-3"><span className="text-xl">📋</span><a href="https://lt.house" target="_blank" rel="noreferrer" className="hover:text-amber-600">The Lighthouse Process</a></div>
-              <div className="flex items-start gap-3"><span className="text-xl">⭐</span><a href="https://lt.house" target="_blank" rel="noreferrer" className="hover:text-amber-600">Founder community</a></div>
-              <div className="flex items-start gap-3"><span className="text-xl">💰</span><a href="https://lt.house" target="_blank" rel="noreferrer" className="hover:text-amber-600">Raising capital</a></div>
-              <div className="flex items-start gap-3"><span className="text-xl">⚡</span><a href="https://lt.house" target="_blank" rel="noreferrer" className="hover:text-amber-600">Who is Zap</a></div>
-            </div>
-          </div>
+          <button onClick={() => onSignIn("investor")} className="mt-5 inline-flex items-center gap-2 font-bold text-amber-600 hover:text-amber-700">Investor sign in →</button>
         </div>
 
         <hr className="border-stone-200" />
@@ -269,7 +269,7 @@ function PublicLanding({ onSignIn }) {
           <h3 className="text-2xl font-display font-bold mb-3">Ready to get on the list?</h3>
           <p className="text-stone-700 mb-5 max-w-lg mx-auto">Zap reviews every application personally. Whether you're hiring or being hired, you're in good hands.</p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <button onClick={() => onSignIn("talent")} className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-yellow-400 text-black hover:bg-yellow-300 rounded-lg font-bold text-sm">
+            <button onClick={onApplyAsTalent} className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-yellow-400 text-black hover:bg-yellow-300 rounded-lg font-bold text-sm">
               <Zap size={16} /> Apply as talent
             </button>
             <button onClick={() => onSignIn("company")} className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-white border border-stone-300 text-black hover:bg-stone-50 rounded-lg font-bold text-sm">
@@ -286,7 +286,6 @@ function PublicLanding({ onSignIn }) {
             <span>The Lighthouse · Talent</span>
           </div>
           <div className="flex items-center gap-4">
-            <a href="https://lt.house" target="_blank" rel="noreferrer" className="hover:text-amber-600">lt.house →</a>
             <button onClick={() => onSignIn()} className="hover:text-amber-600">Sign in</button>
           </div>
         </div>

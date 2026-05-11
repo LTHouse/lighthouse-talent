@@ -315,7 +315,14 @@ function ModeSwitcher({ mode, setMode, signedInEmail, logout }) {
 // Steps: Landing → LinkedIn → Basics → Motivations (drag-rank) → Startup/tech yes/no → Confirm
 // ============================================================
 function TalentIntakeFlow({ user, logout }) {
-  const [step, setStep] = useState(0);
+  // If the public landing CTA dropped us in directly, jump past the talent landing screen.
+  const skipLanding = typeof window !== "undefined" && window.__lt_skip_talent_landing;
+  const [step, setStep] = useState(skipLanding ? 1 : 0);
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.__lt_skip_talent_landing) {
+      window.__lt_skip_talent_landing = false; // consume the flag after first use
+    }
+  }, []);
   const [profile, setProfile] = useState({
     firstName: "", lastName: "", email: user.email, phone: "",
     linkedin: "", linkedinConnected: false,
