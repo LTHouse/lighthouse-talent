@@ -339,59 +339,87 @@ function TalentIntakeFlow({ user, logout }) {
             <span className="font-display tracking-tight font-bold">Lighthouse</span>
             <span className="text-stone-500 text-xs">Talent</span>
           </div>
-          {step > 0 && step < 5 && <div className="text-xs text-stone-500 tabular-nums">Step {step} of 4</div>}
+          {step > 0 && step < 4 && <div className="text-xs text-stone-500 tabular-nums">Step {step} of 3</div>}
           <Button variant="ghost" size="sm" icon={LogOut} onClick={logout}>Exit</Button>
         </div>
-        {step > 0 && step < 5 && (
-          <div className="max-w-3xl mx-auto px-6 pb-3"><ProgressBar value={step} max={4} /></div>
+        {step > 0 && step < 4 && (
+          <div className="max-w-3xl mx-auto px-6 pb-3"><ProgressBar value={step} max={3} /></div>
         )}
       </div>
       <div className="max-w-3xl mx-auto px-6 py-10">
         {step === 0 && <TalentLanding onStart={next} />}
         {step === 1 && <TalentLinkedIn profile={profile} update={update} onNext={next} onBack={back} />}
         {step === 2 && <TalentBasics profile={profile} update={update} onNext={next} onBack={back} />}
-        {step === 3 && <TalentMotivations profile={profile} update={update} onNext={next} onBack={back} />}
-        {step === 4 && <TalentYesNo profile={profile} update={update} onNext={next} onBack={back} />}
-        {step === 5 && <TalentConfirmation profile={profile} onExit={logout} />}
+        {step === 3 && <TalentMotivations profile={profile} update={update} onSubmit={() => setStep(4)} onBack={back} />}
+        {step === 4 && <TalentConfirmation profile={profile} onExit={logout} />}
       </div>
     </div>
   );
 }
 
+// Talent landing — mirrors the lt.house aesthetic: big ⚡ icon, Syne headline, emoji-led list sections, hr dividers, no card chrome.
 function TalentLanding({ onStart }) {
   return (
-    <div className="space-y-8">
-      <div className="text-center">
-        <h1 className="text-5xl md:text-6xl font-black tracking-tight font-display leading-[1.05]">
-          Get on <span className="text-amber-500">Zap's list.</span>
+    <div className="space-y-10 py-8">
+      <div>
+        <div className="text-5xl mb-6">⚡</div>
+        <h1 className="text-4xl md:text-5xl font-display tracking-tight leading-[1.05]">
+          Get on the list.
         </h1>
-        <p className="text-stone-500 text-lg mt-4 max-w-2xl mx-auto">
+        <p className="text-stone-700 text-lg mt-6 max-w-2xl leading-relaxed">
           The Lighthouse Talent Network is a curated database of operators, builders, and creatives for Nashville's best startups. Every member is personally vetted by Zap.
         </p>
       </div>
-      <div className="grid md:grid-cols-3 gap-3">
-        {[
-          { i: "01", t: "Connect LinkedIn", d: "We pull your profile so you don't type twice." },
-          { i: "02", t: "Tell us what you want", d: "Location, role, motivation. A few minutes." },
-          { i: "03", t: "Submit", d: "Zap reviews every application personally." },
-        ].map(s => (
-          <Card key={s.i} className="bg-white">
-            <div className="text-amber-500 font-bold text-xs tracking-widest">{s.i}</div>
-            <div className="text-xl font-bold mt-1">{s.t}</div>
-            <div className="text-sm text-stone-500 mt-1">{s.d}</div>
-          </Card>
-        ))}
-      </div>
-      <Card>
-        <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-2">What happens next</div>
-        <div className="space-y-1.5 text-sm text-stone-700">
-          <div>1. Zap reviews your application personally.</div>
-          <div>2. If approved, we'll set up coffee or a Zoom to get to know you.</div>
-          <div>3. Once vetted, you're added to the live database for startups to find.</div>
-          <div>4. We make warm intros directly — founders come to you.</div>
+
+      <hr className="border-stone-200" />
+
+      <div className="grid md:grid-cols-2 gap-x-12 gap-y-8">
+        <div>
+          <h3 className="text-lg font-display font-bold mb-3">How it works</h3>
+          <div className="space-y-2.5 text-base">
+            <div className="flex items-start gap-3"><span className="text-xl">🔗</span><span>Connect your LinkedIn</span></div>
+            <div className="flex items-start gap-3"><span className="text-xl">📝</span><span>The essentials — location, role, experience</span></div>
+            <div className="flex items-start gap-3"><span className="text-xl">⭐</span><span>Optional: rank your "why startups"</span></div>
+            <div className="flex items-start gap-3"><span className="text-xl">🚀</span><span>Submit — Zap reviews personally</span></div>
+          </div>
         </div>
-      </Card>
-      <div className="text-center">
+        <div>
+          <h3 className="text-lg font-display font-bold mb-3">What happens next</h3>
+          <div className="space-y-2.5 text-base">
+            <div className="flex items-start gap-3"><span className="text-xl">☕</span><span>Coffee or Zoom with Zap</span></div>
+            <div className="flex items-start gap-3"><span className="text-xl">✅</span><span>You're added to the live database</span></div>
+            <div className="flex items-start gap-3"><span className="text-xl">🤝</span><span>We make warm intros directly</span></div>
+            <div className="flex items-start gap-3"><span className="text-xl">🏠</span><span>Founders come to you — no cold applications</span></div>
+          </div>
+        </div>
+      </div>
+
+      <hr className="border-stone-200" />
+
+      <div className="grid md:grid-cols-2 gap-x-12 gap-y-8">
+        <div>
+          <h3 className="text-lg font-display font-bold mb-3">Who's in the network</h3>
+          <div className="space-y-2.5 text-base">
+            <div className="flex items-start gap-3"><span className="text-xl">⚙️</span><span>Operators</span></div>
+            <div className="flex items-start gap-3"><span className="text-xl">🔧</span><span>Builders</span></div>
+            <div className="flex items-start gap-3"><span className="text-xl">🎨</span><span>Creatives</span></div>
+            <div className="flex items-start gap-3"><span className="text-xl">🦄</span><span>Founders</span></div>
+          </div>
+        </div>
+        <div>
+          <h3 className="text-lg font-display font-bold mb-3">Why join</h3>
+          <div className="space-y-2.5 text-base">
+            <div className="flex items-start gap-3"><span className="text-xl">🎯</span><span>No noise — Zap vets every connection</span></div>
+            <div className="flex items-start gap-3"><span className="text-xl">⚡</span><span>Nashville's most curated startup network</span></div>
+            <div className="flex items-start gap-3"><span className="text-xl">💼</span><span>Real intros to real founders</span></div>
+            <div className="flex items-start gap-3"><span className="text-xl">🌟</span><span>Free for talent. Always.</span></div>
+          </div>
+        </div>
+      </div>
+
+      <hr className="border-stone-200" />
+
+      <div>
         <Button size="lg" icon={Zap} onClick={onStart}>Start your application</Button>
       </div>
     </div>
@@ -466,11 +494,14 @@ function TalentBasics({ profile, update, onNext, onBack }) {
     update({ relocationStatus: v });
     setShowRemoteWarning(v === "remote_only");
   }
-  const canContinue = profile.firstName && profile.lastName && profile.email && profile.phone && profile.currentLocation && profile.relocationStatus && profile.yearsExperience >= 0;
+  const canContinue = profile.firstName && profile.lastName && profile.email && profile.phone
+    && profile.currentLocation && profile.relocationStatus && profile.yearsExperience >= 0
+    && profile.hasStartupExperience !== null && profile.hasTechExperience !== null
+    && (profile.hasStartupExperience === false || (profile.startupStage && profile.startupSize));
   return (
     <div className="space-y-6">
       <div>
-        <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-2">Step 2 · The basics</div>
+        <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-2">Step 2 · The essentials</div>
         <h2 className="text-3xl font-display">Just the essentials.</h2>
       </div>
       <Card className="space-y-4">
@@ -480,106 +511,14 @@ function TalentBasics({ profile, update, onNext, onBack }) {
           <Field label="Email" required><Input type="email" value={profile.email} onChange={e => update({ email: e.target.value })} /></Field>
           <Field label="Phone" required><Input value={profile.phone} onChange={e => update({ phone: e.target.value })} placeholder="(615) 555-0123" /></Field>
         </div>
-        <Field label="Where are you right now?" required hint="City + state (US) or city + country.">
-          <Input value={profile.currentLocation} onChange={e => update({ currentLocation: e.target.value })} placeholder="Nashville, TN" />
-          <div className="flex flex-wrap gap-2 mt-2">
-            {["Nashville, TN", "Memphis, TN", "Knoxville, TN", "Chattanooga, TN"].map(c => (
-              <button key={c} type="button" onClick={() => update({ currentLocation: c })}
-                className="px-3 py-1 text-xs rounded-full border border-stone-300 bg-white text-stone-700 hover:bg-stone-50">{c}</button>
-            ))}
-          </div>
-        </Field>
-        <Field label="Are you willing to relocate to Nashville for the right role?" required>
-          <div className="space-y-2">
-            {RELOCATION_OPTIONS.map(o => (
-              <label key={o.value} className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition ${profile.relocationStatus === o.value ? "border-yellow-400 bg-yellow-50" : "border-stone-200 hover:border-stone-300"}`}>
-                <input type="radio" name="reloc" value={o.value} checked={profile.relocationStatus === o.value} onChange={() => setRelocation(o.value)} className="accent-yellow-400" />
-                <span className="text-sm">{o.label}</span>
-              </label>
-            ))}
-          </div>
-          {showRemoteWarning && (
-            <div className="mt-3 text-xs text-stone-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-              Heads up: most Lighthouse companies are Nashville-based and many roles are in-person or hybrid. You'll see fewer matches than candidates open to relocation.
-            </div>
-          )}
-        </Field>
         <div className="grid sm:grid-cols-2 gap-4">
+          <Field label="Years of experience" required hint="Just a number.">
+            <Input type="number" min={0} max={50} value={profile.yearsExperience} onChange={e => update({ yearsExperience: +e.target.value })} />
+          </Field>
           <Field label="Ideal work mode" required>
             <Select value={profile.workMode} onChange={v => update({ workMode: v })} options={WORK_MODES} />
           </Field>
-          <Field label="Years of experience" required>
-            <Input type="number" min={0} max={40} value={profile.yearsExperience} onChange={e => update({ yearsExperience: +e.target.value })} />
-          </Field>
         </div>
-      </Card>
-      <div className="flex justify-between pt-2">
-        <Button variant="ghost" icon={ChevronLeft} onClick={onBack}>Back</Button>
-        <Button onClick={onNext} icon={ArrowRight} disabled={!canContinue}>Continue</Button>
-      </div>
-    </div>
-  );
-}
-
-// Drag-to-rank UI for motivations
-function TalentMotivations({ profile, update, onNext, onBack }) {
-  const items = profile.rankedMotivations;
-  const [dragIdx, setDragIdx] = useState(null);
-  const [overIdx, setOverIdx] = useState(null);
-  function reorder(from, to) {
-    if (from === to) return;
-    const next = [...items];
-    const [moved] = next.splice(from, 1);
-    next.splice(to, 0, moved);
-    update({ rankedMotivations: next });
-  }
-  function moveUp(i) { if (i > 0) reorder(i, i - 1); }
-  function moveDown(i) { if (i < items.length - 1) reorder(i, i + 1); }
-  return (
-    <div className="space-y-6">
-      <div>
-        <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-2">Step 3 · Why startups?</div>
-        <h2 className="text-3xl font-display">Rank from most → least true.</h2>
-        <p className="text-stone-500 mt-1">Drag to reorder. Top = most true. Honest signal is the point.</p>
-      </div>
-      <div className="space-y-2">
-        {items.map((m, i) => (
-          <div key={m}
-            draggable
-            onDragStart={() => setDragIdx(i)}
-            onDragOver={e => { e.preventDefault(); setOverIdx(i); }}
-            onDragLeave={() => setOverIdx(null)}
-            onDrop={() => { if (dragIdx !== null) reorder(dragIdx, i); setDragIdx(null); setOverIdx(null); }}
-            onDragEnd={() => { setDragIdx(null); setOverIdx(null); }}
-            className={`flex items-center gap-3 p-3 bg-white border rounded-xl transition select-none ${overIdx === i ? "border-amber-500 shadow-lg" : "border-stone-200"} ${dragIdx === i ? "opacity-50" : ""}`}>
-            <span className="text-stone-400 cursor-grab"><GripVertical size={16} /></span>
-            <span className="w-6 h-6 rounded-full bg-yellow-100 text-amber-800 flex items-center justify-center font-bold text-xs">{i + 1}</span>
-            <div className="flex-1 text-sm">{m}</div>
-            <div className="flex gap-1">
-              <button onClick={() => moveUp(i)} disabled={i === 0} className="p-1 text-stone-400 hover:text-black disabled:opacity-30"><ChevronUp size={16} /></button>
-              <button onClick={() => moveDown(i)} disabled={i === items.length - 1} className="p-1 text-stone-400 hover:text-black disabled:opacity-30"><ChevronDown size={16} /></button>
-            </div>
-          </div>
-        ))}
-      </div>
-      <div className="flex justify-between pt-2">
-        <Button variant="ghost" icon={ChevronLeft} onClick={onBack}>Back</Button>
-        <Button onClick={onNext} icon={ArrowRight}>Continue</Button>
-      </div>
-    </div>
-  );
-}
-
-function TalentYesNo({ profile, update, onNext, onBack }) {
-  const canContinue = profile.hasStartupExperience !== null && profile.hasTechExperience !== null
-    && (profile.hasStartupExperience === false || (profile.startupStage && profile.startupSize));
-  return (
-    <div className="space-y-6">
-      <div>
-        <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-2">Step 4 · Experience</div>
-        <h2 className="text-3xl font-display">Two quick questions.</h2>
-      </div>
-      <Card className="space-y-5">
         <Field label="Have you worked at a startup before?" required>
           <div className="flex gap-2">
             <button onClick={() => update({ hasStartupExperience: true })}
@@ -608,10 +547,90 @@ function TalentYesNo({ profile, update, onNext, onBack }) {
               className={`flex-1 p-3 border rounded-lg text-sm font-bold transition ${profile.hasTechExperience === false ? "bg-yellow-400 border-yellow-400" : "bg-white border-stone-300 hover:border-stone-400"}`}>No</button>
           </div>
         </Field>
+        <div className="border-t border-stone-200 pt-4">
+          <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-3">Location</div>
+          <Field label="Where are you right now?" required hint="City + state (US) or city + country.">
+            <Input value={profile.currentLocation} onChange={e => update({ currentLocation: e.target.value })} placeholder="Nashville, TN" />
+            <div className="flex flex-wrap gap-2 mt-2">
+              {["Nashville, TN", "Memphis, TN", "Knoxville, TN", "Chattanooga, TN"].map(c => (
+                <button key={c} type="button" onClick={() => update({ currentLocation: c })}
+                  className="px-3 py-1 text-xs rounded-full border border-stone-300 bg-white text-stone-700 hover:bg-stone-50">{c}</button>
+              ))}
+            </div>
+          </Field>
+          <div className="h-3" />
+          <Field label="Are you willing to relocate to Nashville for the right role?" required>
+            <div className="space-y-2">
+              {RELOCATION_OPTIONS.map(o => (
+                <label key={o.value} className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition ${profile.relocationStatus === o.value ? "border-yellow-400 bg-yellow-50" : "border-stone-200 hover:border-stone-300"}`}>
+                  <input type="radio" name="reloc" value={o.value} checked={profile.relocationStatus === o.value} onChange={() => setRelocation(o.value)} className="accent-yellow-400" />
+                  <span className="text-sm">{o.label}</span>
+                </label>
+              ))}
+            </div>
+            {showRemoteWarning && (
+              <div className="mt-3 text-xs text-stone-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                Heads up: most Lighthouse companies are Nashville-based and many roles are in-person or hybrid. You'll see fewer matches than candidates open to relocation.
+              </div>
+            )}
+          </Field>
+        </div>
       </Card>
       <div className="flex justify-between pt-2">
         <Button variant="ghost" icon={ChevronLeft} onClick={onBack}>Back</Button>
-        <Button onClick={onNext} icon={Zap} disabled={!canContinue}>Submit application</Button>
+        <Button onClick={onNext} icon={ArrowRight} disabled={!canContinue}>Continue</Button>
+      </div>
+    </div>
+  );
+}
+
+// Optional last step — drag-to-rank motivations. Skippable.
+function TalentMotivations({ profile, update, onSubmit, onBack }) {
+  const items = profile.rankedMotivations;
+  const [dragIdx, setDragIdx] = useState(null);
+  const [overIdx, setOverIdx] = useState(null);
+  function reorder(from, to) {
+    if (from === to) return;
+    const next = [...items];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    update({ rankedMotivations: next });
+  }
+  function moveUp(i) { if (i > 0) reorder(i, i - 1); }
+  function moveDown(i) { if (i < items.length - 1) reorder(i, i + 1); }
+  return (
+    <div className="space-y-6">
+      <div>
+        <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-2 flex items-center gap-2">Step 3 · Why startups? <Tag color="yellow" size="sm">Optional</Tag></div>
+        <h2 className="text-3xl font-display">Rank from most → least true.</h2>
+        <p className="text-stone-500 mt-1">Drag to reorder. Top = most true. Honest signal is the point — but you can skip this and submit if you'd rather not answer.</p>
+      </div>
+      <div className="space-y-2">
+        {items.map((m, i) => (
+          <div key={m}
+            draggable
+            onDragStart={() => setDragIdx(i)}
+            onDragOver={e => { e.preventDefault(); setOverIdx(i); }}
+            onDragLeave={() => setOverIdx(null)}
+            onDrop={() => { if (dragIdx !== null) reorder(dragIdx, i); setDragIdx(null); setOverIdx(null); }}
+            onDragEnd={() => { setDragIdx(null); setOverIdx(null); }}
+            className={`flex items-center gap-3 p-3 bg-white border rounded-xl transition select-none ${overIdx === i ? "border-amber-500 shadow-lg" : "border-stone-200"} ${dragIdx === i ? "opacity-50" : ""}`}>
+            <span className="text-stone-400 cursor-grab"><GripVertical size={16} /></span>
+            <span className="w-6 h-6 rounded-full bg-yellow-100 text-amber-800 flex items-center justify-center font-bold text-xs">{i + 1}</span>
+            <div className="flex-1 text-sm">{m}</div>
+            <div className="flex gap-1">
+              <button onClick={() => moveUp(i)} disabled={i === 0} className="p-1 text-stone-400 hover:text-black disabled:opacity-30"><ChevronUp size={16} /></button>
+              <button onClick={() => moveDown(i)} disabled={i === items.length - 1} className="p-1 text-stone-400 hover:text-black disabled:opacity-30"><ChevronDown size={16} /></button>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="flex flex-col sm:flex-row justify-between pt-2 gap-2">
+        <Button variant="ghost" icon={ChevronLeft} onClick={onBack}>Back</Button>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <Button variant="secondary" onClick={() => { update({ rankedMotivations: [] }); onSubmit(); }}>Skip &amp; submit</Button>
+          <Button onClick={onSubmit} icon={Zap}>Confirm ranking &amp; submit</Button>
+        </div>
       </div>
     </div>
   );
@@ -858,8 +877,14 @@ function CompanySearch({ filters, setFilters, nlQuery, setNlQuery, usedAdvanced,
           <Field label="Role type">
             <MultiSelectChips options={ROLE_TYPES} selected={filters.roles} onChange={v => setFilters({ ...filters, roles: v })} />
           </Field>
-          <Field label="Years of experience" hint={`${filters.yoeMin}–${filters.yoeMax} yrs`}>
-            <RangeSlider min={0} max={25} value={[filters.yoeMin, filters.yoeMax]} onChange={v => setFilters({ ...filters, yoeMin: v[0], yoeMax: v[1] })} format={v => `${v}y`} />
+          <Field label="Years of experience" hint="Min / max.">
+            <div className="flex items-center gap-2">
+              <Input type="number" min={0} max={50} value={filters.yoeMin}
+                onChange={e => setFilters({ ...filters, yoeMin: Math.max(0, +e.target.value || 0) })} placeholder="0" />
+              <span className="text-stone-400 text-sm">to</span>
+              <Input type="number" min={0} max={50} value={filters.yoeMax}
+                onChange={e => setFilters({ ...filters, yoeMax: Math.max(filters.yoeMin, +e.target.value || 0) })} placeholder="25" />
+            </div>
           </Field>
           <Field label="Has worked at a tech company?">
             <div className="flex gap-2">
@@ -1002,15 +1027,9 @@ function CandidateCardMVP({ candidate, onOpen, onRequestIntro, onAddToShortlist,
       <div className="flex gap-4">
         <Avatar candidate={candidate} size={48} />
         <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between flex-wrap gap-1">
-            <div className="min-w-0">
-              <div className="font-bold text-lg truncate">{candidate.firstName} {candidate.lastName}</div>
-              <div className="text-sm text-stone-500 truncate">{candidate.currentRole}{candidate.currentCompany && ` · ${candidate.currentCompany}`}</div>
-            </div>
-            <div className="flex items-center gap-1.5 flex-wrap">
-              {candidate.hasTechExperience && <Tag color="blue" size="sm">Tech ✓</Tag>}
-              {candidate.hasStartupExperience && <Tag color="yellow" size="sm">Startup ✓{candidate.startupStage ? ` · ${candidate.startupStage}` : ""}</Tag>}
-            </div>
+          <div className="min-w-0">
+            <div className="font-bold text-lg truncate">{candidate.firstName} {candidate.lastName}</div>
+            <div className="text-sm text-stone-500 truncate">{candidate.currentRole}{candidate.currentCompany && ` · ${candidate.currentCompany}`}</div>
           </div>
           <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-stone-500">
             <span><Clock size={11} className="inline mr-0.5" /> {candidate.yearsExperience} yrs</span>
@@ -1040,6 +1059,40 @@ function CandidateCardMVP({ candidate, onOpen, onRequestIntro, onAddToShortlist,
           </div>
         </div>
       </div>
+    </Card>
+  );
+}
+
+function RankingDisclosure({ ranked }) {
+  const [open, setOpen] = useState(false);
+  if (!ranked || ranked.length === 0) return (
+    <Card>
+      <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-1">Why startups — full ranking</div>
+      <div className="text-sm text-stone-500 italic">Candidate skipped the ranking question.</div>
+    </Card>
+  );
+  return (
+    <Card>
+      <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between text-left">
+        <div className="text-xs uppercase tracking-wider text-stone-500 font-bold">Why startups — full ranking</div>
+        <span className="flex items-center gap-1 text-xs text-stone-500">{open ? "Hide" : `Show all 7`} {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}</span>
+      </button>
+      {!open && (
+        <div className="mt-3 flex items-center gap-3 p-2 bg-yellow-50 border border-yellow-200 rounded-lg text-sm">
+          <span className="w-6 h-6 rounded-full bg-yellow-300 text-amber-900 flex items-center justify-center font-bold text-xs flex-shrink-0">1</span>
+          <span className="font-semibold">{ranked[0]}</span>
+        </div>
+      )}
+      {open && (
+        <div className="space-y-2 mt-3">
+          {ranked.map((m, i) => (
+            <div key={m} className="flex items-center gap-3 p-2 bg-stone-50 border border-stone-200 rounded-lg text-sm">
+              <span className="w-6 h-6 rounded-full bg-yellow-100 text-amber-800 flex items-center justify-center font-bold text-xs flex-shrink-0">{i + 1}</span>
+              <span>{m}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </Card>
   );
 }
@@ -1087,17 +1140,7 @@ function CandidateProfile({ candidate, onBack, onRequestIntro }) {
               ))}
             </div>
           </Card>
-          <Card>
-            <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-3">Why startups — full ranking</div>
-            <div className="space-y-2">
-              {candidate.rankedMotivations.map((m, i) => (
-                <div key={m} className="flex items-center gap-3 p-2 bg-stone-50 border border-stone-200 rounded-lg text-sm">
-                  <span className="w-6 h-6 rounded-full bg-yellow-100 text-amber-800 flex items-center justify-center font-bold text-xs flex-shrink-0">{i + 1}</span>
-                  <span>{m}</span>
-                </div>
-              ))}
-            </div>
-          </Card>
+          <RankingDisclosure ranked={candidate.rankedMotivations} />
           <Card>
             <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-3">Experience</div>
             <div className="space-y-2 text-sm">
