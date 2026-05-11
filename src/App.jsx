@@ -344,8 +344,7 @@ function TalentIntakeFlow({ user, logout }) {
     linkedin: "", linkedinConnected: false,
     currentLocation: "", relocationStatus: "",
     yearsExperience: 5, workMode: "Open",
-    rankedMotivations: [...MOTIVATIONS],
-    hasStartupExperience: null, startupStage: "", startupSize: "",
+    hasStartupExperience: null,
     hasTechExperience: null,
     currentRole: "", currentCompany: "", skills: [],
   });
@@ -362,19 +361,18 @@ function TalentIntakeFlow({ user, logout }) {
             <span className="font-display tracking-tight font-bold">Lighthouse</span>
             <span className="text-stone-500 text-xs">Talent</span>
           </div>
-          {step > 0 && step < 4 && <div className="text-xs text-stone-500 tabular-nums">Step {step} of 3</div>}
+          {step > 0 && step < 3 && <div className="text-xs text-stone-500 tabular-nums">Step {step} of 2</div>}
           <Button variant="ghost" size="sm" icon={LogOut} onClick={logout}>Exit</Button>
         </div>
-        {step > 0 && step < 4 && (
-          <div className="max-w-3xl mx-auto px-6 pb-3"><ProgressBar value={step} max={3} /></div>
+        {step > 0 && step < 3 && (
+          <div className="max-w-3xl mx-auto px-6 pb-3"><ProgressBar value={step} max={2} /></div>
         )}
       </div>
       <div className="max-w-3xl mx-auto px-6 py-10">
         {step === 0 && <TalentLanding onStart={next} />}
         {step === 1 && <TalentLinkedIn profile={profile} update={update} onNext={next} onBack={back} />}
-        {step === 2 && <TalentBasics profile={profile} update={update} onNext={next} onBack={back} />}
-        {step === 3 && <TalentMotivations profile={profile} update={update} onSubmit={() => setStep(4)} onBack={back} />}
-        {step === 4 && <TalentConfirmation profile={profile} onExit={logout} />}
+        {step === 2 && <TalentBasics profile={profile} update={update} onSubmit={() => setStep(3)} onBack={back} />}
+        {step === 3 && <TalentConfirmation profile={profile} onExit={logout} />}
       </div>
     </div>
   );
@@ -402,7 +400,6 @@ function TalentLanding({ onStart }) {
           <div className="space-y-2.5 text-base">
             <div className="flex items-start gap-3"><span className="text-xl">🔗</span><span>Connect your LinkedIn</span></div>
             <div className="flex items-start gap-3"><span className="text-xl">📝</span><span>The essentials — location, role, experience</span></div>
-            <div className="flex items-start gap-3"><span className="text-xl">⭐</span><span>Optional: rank your "why startups"</span></div>
             <div className="flex items-start gap-3"><span className="text-xl">🚀</span><span>Submit — Zap reviews personally</span></div>
           </div>
         </div>
@@ -511,7 +508,7 @@ function TalentLinkedIn({ profile, update, onNext, onBack }) {
   );
 }
 
-function TalentBasics({ profile, update, onNext, onBack }) {
+function TalentBasics({ profile, update, onSubmit, onBack }) {
   const [showRemoteWarning, setShowRemoteWarning] = useState(profile.relocationStatus === "remote_only");
   function setRelocation(v) {
     update({ relocationStatus: v });
@@ -519,8 +516,7 @@ function TalentBasics({ profile, update, onNext, onBack }) {
   }
   const canContinue = profile.firstName && profile.lastName && profile.email && profile.phone
     && profile.currentLocation && profile.relocationStatus && profile.yearsExperience >= 0
-    && profile.hasStartupExperience !== null && profile.hasTechExperience !== null
-    && (profile.hasStartupExperience === false || (profile.startupStage && profile.startupSize));
+    && profile.hasStartupExperience !== null && profile.hasTechExperience !== null;
   return (
     <div className="space-y-6">
       <div>
@@ -546,22 +542,10 @@ function TalentBasics({ profile, update, onNext, onBack }) {
           <div className="flex gap-2">
             <button onClick={() => update({ hasStartupExperience: true })}
               className={`flex-1 p-3 border rounded-lg text-sm font-bold transition ${profile.hasStartupExperience === true ? "bg-yellow-400 border-yellow-400" : "bg-white border-stone-300 hover:border-stone-400"}`}>Yes</button>
-            <button onClick={() => update({ hasStartupExperience: false, startupStage: "", startupSize: "" })}
+            <button onClick={() => update({ hasStartupExperience: false })}
               className={`flex-1 p-3 border rounded-lg text-sm font-bold transition ${profile.hasStartupExperience === false ? "bg-yellow-400 border-yellow-400" : "bg-white border-stone-300 hover:border-stone-400"}`}>No</button>
           </div>
         </Field>
-        {profile.hasStartupExperience === true && (
-          <div className="grid sm:grid-cols-2 gap-4">
-            <Field label="What stage?" required>
-              <Select value={profile.startupStage} onChange={v => update({ startupStage: v })}
-                options={[{ value: "", label: "Pick one..." }, ...STARTUP_STAGES.map(s => ({ value: s, label: s }))]} />
-            </Field>
-            <Field label="What size?" required>
-              <Select value={profile.startupSize} onChange={v => update({ startupSize: v })}
-                options={[{ value: "", label: "Pick one..." }, ...STARTUP_SIZES.map(s => ({ value: s, label: s }))]} />
-            </Field>
-          </div>
-        )}
         <Field label="Have you worked at a tech company before?" required>
           <div className="flex gap-2">
             <button onClick={() => update({ hasTechExperience: true })}
@@ -601,63 +585,13 @@ function TalentBasics({ profile, update, onNext, onBack }) {
       </Card>
       <div className="flex justify-between pt-2">
         <Button variant="ghost" icon={ChevronLeft} onClick={onBack}>Back</Button>
-        <Button onClick={onNext} icon={ArrowRight} disabled={!canContinue}>Continue</Button>
+        <Button onClick={onSubmit} icon={Zap} disabled={!canContinue}>Submit</Button>
       </div>
     </div>
   );
 }
 
-// Optional last step — drag-to-rank motivations. Skippable.
-function TalentMotivations({ profile, update, onSubmit, onBack }) {
-  const items = profile.rankedMotivations;
-  const [dragIdx, setDragIdx] = useState(null);
-  const [overIdx, setOverIdx] = useState(null);
-  function reorder(from, to) {
-    if (from === to) return;
-    const next = [...items];
-    const [moved] = next.splice(from, 1);
-    next.splice(to, 0, moved);
-    update({ rankedMotivations: next });
-  }
-  function moveUp(i) { if (i > 0) reorder(i, i - 1); }
-  function moveDown(i) { if (i < items.length - 1) reorder(i, i + 1); }
-  return (
-    <div className="space-y-6">
-      <div>
-        <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-2 flex items-center gap-2">Step 3 · Why startups? <Tag color="yellow" size="sm">Optional</Tag></div>
-        <h2 className="text-3xl font-display">Rank from most → least true.</h2>
-        <p className="text-stone-500 mt-1">Drag to reorder. Top = most true. Honest signal is the point — but you can skip this and submit if you'd rather not answer.</p>
-      </div>
-      <div className="space-y-2">
-        {items.map((m, i) => (
-          <div key={m}
-            draggable
-            onDragStart={() => setDragIdx(i)}
-            onDragOver={e => { e.preventDefault(); setOverIdx(i); }}
-            onDragLeave={() => setOverIdx(null)}
-            onDrop={() => { if (dragIdx !== null) reorder(dragIdx, i); setDragIdx(null); setOverIdx(null); }}
-            onDragEnd={() => { setDragIdx(null); setOverIdx(null); }}
-            className={`flex items-center gap-3 p-3 bg-white border rounded-xl transition select-none ${overIdx === i ? "border-amber-500 shadow-lg" : "border-stone-200"} ${dragIdx === i ? "opacity-50" : ""}`}>
-            <span className="text-stone-400 cursor-grab"><GripVertical size={16} /></span>
-            <span className="w-6 h-6 rounded-full bg-yellow-100 text-amber-800 flex items-center justify-center font-bold text-xs">{i + 1}</span>
-            <div className="flex-1 text-sm">{m}</div>
-            <div className="flex gap-1">
-              <button onClick={() => moveUp(i)} disabled={i === 0} className="p-1 text-stone-400 hover:text-black disabled:opacity-30"><ChevronUp size={16} /></button>
-              <button onClick={() => moveDown(i)} disabled={i === items.length - 1} className="p-1 text-stone-400 hover:text-black disabled:opacity-30"><ChevronDown size={16} /></button>
-            </div>
-          </div>
-        ))}
-      </div>
-      <div className="flex flex-col sm:flex-row justify-between pt-2 gap-2">
-        <Button variant="ghost" icon={ChevronLeft} onClick={onBack}>Back</Button>
-        <div className="flex flex-col sm:flex-row gap-2">
-          <Button variant="secondary" onClick={() => { update({ rankedMotivations: [] }); onSubmit(); }}>Skip &amp; submit</Button>
-          <Button onClick={onSubmit} icon={Zap}>Confirm ranking &amp; submit</Button>
-        </div>
-      </div>
-    </div>
-  );
-}
+// Drag-to-rank motivations step removed. Intake is now LinkedIn → Essentials → Confirmation.
 
 function TalentConfirmation({ profile, onExit }) {
   return (
@@ -927,11 +861,6 @@ function CompanySearch({ filters, setFilters, nlQuery, setNlQuery, usedAdvanced,
                   className={`flex-1 px-3 py-2 text-xs rounded-lg border transition ${filters.hasStartup === v ? "bg-yellow-400 border-yellow-400 text-black font-bold" : "bg-white border-stone-300 text-stone-700 hover:border-stone-400"}`}>{l}</button>
               ))}
             </div>
-            {filters.hasStartup === "yes" && (
-              <div className="mt-2">
-                <MultiSelectChips options={STARTUP_STAGES} selected={filters.startupStages} onChange={v => setFilters({ ...filters, startupStages: v })} />
-              </div>
-            )}
           </Field>
         </div>
         <div className="flex justify-end">
@@ -1167,11 +1096,10 @@ function CandidateProfile({ candidate, onBack, onRequestIntro }) {
               ))}
             </div>
           </Card>
-          <RankingDisclosure ranked={candidate.rankedMotivations} />
           <Card>
             <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-3">Experience</div>
             <div className="space-y-2 text-sm">
-              <div><span className="text-stone-500 text-xs">Has worked at a startup?</span> <span className="font-bold">{candidate.hasStartupExperience ? "Yes" : "No"}</span>{candidate.hasStartupExperience && candidate.startupStage && ` · ${candidate.startupStage}, ${candidate.startupSize}`}</div>
+              <div><span className="text-stone-500 text-xs">Has worked at a startup?</span> <span className="font-bold">{candidate.hasStartupExperience ? "Yes" : "No"}</span></div>
               <div><span className="text-stone-500 text-xs">Has worked at a tech company?</span> <span className="font-bold">{candidate.hasTechExperience ? "Yes" : "No"}</span></div>
             </div>
           </Card>
@@ -1630,18 +1558,7 @@ function AdminCandidateProfile({ candidate, updateCandidate, onBack }) {
               <div><div className="text-xs text-stone-500">Work mode</div><div>{candidate.workMode}</div></div>
               <div><div className="text-xs text-stone-500">Years of experience</div><div>{candidate.yearsExperience}</div></div>
               <div><div className="text-xs text-stone-500">Has tech experience</div><div>{candidate.hasTechExperience ? "Yes" : "No"}</div></div>
-              <div><div className="text-xs text-stone-500">Has startup experience</div><div>{candidate.hasStartupExperience ? `Yes · ${candidate.startupStage}, ${candidate.startupSize}` : "No"}</div></div>
-            </div>
-          </Card>
-          <Card>
-            <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-3">Ranked motivations</div>
-            <div className="space-y-1.5">
-              {candidate.rankedMotivations.map((m, i) => (
-                <div key={m} className="flex items-center gap-2 text-sm">
-                  <span className="w-5 h-5 rounded-full bg-yellow-100 text-amber-800 flex items-center justify-center font-bold text-xs">{i + 1}</span>
-                  <span>{m}</span>
-                </div>
-              ))}
+              <div><div className="text-xs text-stone-500">Has startup experience</div><div>{candidate.hasStartupExperience ? "Yes" : "No"}</div></div>
             </div>
           </Card>
         </div>
