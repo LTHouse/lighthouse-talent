@@ -181,12 +181,12 @@ export function LoginScreen() {
   );
 }
 
-// Public landing page — mirrors lt.house exactly: ⚡ icon, Syne headline, descriptive paragraph,
-// hr dividers, two-column emoji-led list sections, "Sign in" CTAs targeted to each role.
+// Public landing page — intentionally bare. Two CTAs that gate the next step:
+// "I'm talent" goes straight to intake (no portal, no extra screens), "I'm hiring"
+// goes to the login screen with company pre-selected.
 function PublicLanding({ onSignIn, onApplyAsTalent }) {
   return (
-    <div className="min-h-screen bg-white text-black">
-      {/* Top bar */}
+    <div className="min-h-screen bg-white text-black flex flex-col">
       <div className="border-b border-stone-200">
         <div className="max-w-4xl mx-auto px-8 py-5 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -194,112 +194,45 @@ function PublicLanding({ onSignIn, onApplyAsTalent }) {
             <span className="font-display tracking-tight font-bold">The Lighthouse</span>
             <span className="text-stone-400 text-xs">/ Talent</span>
           </div>
-          <button onClick={() => onSignIn()} className="text-sm font-bold hover:text-amber-600">Sign in →</button>
+          <button onClick={() => onSignIn()} className="text-sm text-stone-500 hover:text-amber-600">Sign in →</button>
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-8 py-16 space-y-12">
-        {/* Hero */}
-        <div>
-          <div className="text-6xl mb-6">⚡</div>
-          <h1 className="text-4xl md:text-5xl font-display tracking-tight leading-[1.1]">
-            We back the Nashville startup hire.
+      <div className="flex-1 flex items-center justify-center px-6">
+        <div className="w-full max-w-3xl py-20 text-center">
+          <div className="text-5xl mb-8">⚡</div>
+          <h1 className="text-4xl md:text-5xl font-display tracking-tight leading-[1.1] mb-4">
+            Nashville's curated startup talent network.
           </h1>
-          <p className="text-stone-700 text-lg mt-6 max-w-2xl leading-relaxed">
-            Lighthouse Talent is a curated, semantically-searchable database of operators, builders, and creatives for Nashville's best startups. Every member is personally vetted by Zap.
-          </p>
-        </div>
 
-        <hr className="border-stone-200" />
-
-        {/* What it is + Who it's for */}
-        <div className="grid md:grid-cols-2 gap-x-12 gap-y-8">
-          <div>
-            <h3 className="text-lg font-display font-bold mb-3">What we are</h3>
-            <div className="space-y-2.5 text-base">
-              <div className="flex items-start gap-3"><span className="text-xl">🎯</span><span>A curated talent network for Nashville</span></div>
-              <div className="flex items-start gap-3"><span className="text-xl">🚀</span><span>Hand-picked operators, builders, creatives</span></div>
-              <div className="flex items-start gap-3"><span className="text-xl">⚡</span><span>Every intro made personally by Zap</span></div>
-              <div className="flex items-start gap-3"><span className="text-xl">🌟</span><span>Free for talent. Always.</span></div>
-            </div>
-          </div>
-          <div>
-            <h3 className="text-lg font-display font-bold mb-3">Who it's for</h3>
-            <div className="space-y-2.5 text-base">
-              <div className="flex items-start gap-3"><span className="text-xl">🦄</span><span>Founders ready to hire</span></div>
-              <div className="flex items-start gap-3"><span className="text-xl">💼</span><span>Investors hiring across the portfolio</span></div>
-              <div className="flex items-start gap-3"><span className="text-xl">⚙️</span><span>Operators looking for the right room</span></div>
-              <div className="flex items-start gap-3"><span className="text-xl">🎨</span><span>Builders + creatives ready for v1</span></div>
-            </div>
-          </div>
-        </div>
-
-        <hr className="border-stone-200" />
-
-        {/* How it works */}
-        <div className="grid md:grid-cols-2 gap-x-12 gap-y-8">
-          <div>
-            <h3 className="text-lg font-display font-bold mb-3">If you're a candidate</h3>
-            <div className="space-y-2.5 text-base">
-              <div className="flex items-start gap-3"><span className="text-xl">🔗</span><span>Connect your LinkedIn</span></div>
-              <div className="flex items-start gap-3"><span className="text-xl">📝</span><span>Share the essentials</span></div>
-              <div className="flex items-start gap-3"><span className="text-xl">☕</span><span>Vetting call with Zap</span></div>
-              <div className="flex items-start gap-3"><span className="text-xl">🤝</span><span>Founders come to you</span></div>
-            </div>
-            <button onClick={onApplyAsTalent} className="mt-5 inline-flex items-center gap-2 font-bold text-amber-600 hover:text-amber-700">Apply to the network →</button>
-          </div>
-          <div>
-            <h3 className="text-lg font-display font-bold mb-3">If you're hiring</h3>
-            <div className="space-y-2.5 text-base">
-              <div className="flex items-start gap-3"><span className="text-xl">🔍</span><span>Search by role, experience, motivation</span></div>
-              <div className="flex items-start gap-3"><span className="text-xl">⭐</span><span>Save searches and shortlist candidates</span></div>
-              <div className="flex items-start gap-3"><span className="text-xl">☕</span><span>Request a warm intro through Zap</span></div>
-              <div className="flex items-start gap-3"><span className="text-xl">📚</span><span>Access hiring playbooks + market data</span></div>
-            </div>
-            <button onClick={() => onSignIn("company")} className="mt-5 inline-flex items-center gap-2 font-bold text-amber-600 hover:text-amber-700">Sign in to hire →</button>
-          </div>
-        </div>
-
-        <hr className="border-stone-200" />
-
-        {/* For investors — full width, single column, kept simple */}
-        <div className="max-w-xl">
-          <h3 className="text-lg font-display font-bold mb-3">For investors</h3>
-          <div className="space-y-2.5 text-base">
-            <div className="flex items-start gap-3"><span className="text-xl">📁</span><span>Search on behalf of any portco</span></div>
-            <div className="flex items-start gap-3"><span className="text-xl">🏷️</span><span>Tag every search by portfolio company</span></div>
-            <div className="flex items-start gap-3"><span className="text-xl">💼</span><span>Manage shortlists across your portfolio</span></div>
-            <div className="flex items-start gap-3"><span className="text-xl">🤝</span><span>Same warm-intro flow through Zap</span></div>
-          </div>
-          <button onClick={() => onSignIn("investor")} className="mt-5 inline-flex items-center gap-2 font-bold text-amber-600 hover:text-amber-700">Investor sign in →</button>
-        </div>
-
-        <hr className="border-stone-200" />
-
-        {/* CTA strip */}
-        <div className="text-center py-6">
-          <h3 className="text-2xl font-display font-bold mb-3">Ready to get on the list?</h3>
-          <p className="text-stone-700 mb-5 max-w-lg mx-auto">Zap reviews every application personally. Whether you're hiring or being hired, you're in good hands.</p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <button onClick={onApplyAsTalent} className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-yellow-400 text-black hover:bg-yellow-300 rounded-lg font-bold text-sm">
-              <Zap size={16} /> Apply as talent
+          <div className="grid sm:grid-cols-2 gap-3 mt-12 max-w-2xl mx-auto">
+            <button
+              onClick={onApplyAsTalent}
+              className="group text-left border border-stone-200 rounded-2xl px-6 py-7 hover:border-amber-400 hover:bg-amber-50/40 transition"
+            >
+              <div className="text-2xl mb-2">👋</div>
+              <div className="font-display text-xl font-bold mb-1">I want to work at a startup</div>
+              <div className="text-sm text-stone-500 group-hover:text-amber-700">Apply to the network →</div>
             </button>
-            <button onClick={() => onSignIn("company")} className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-white border border-stone-300 text-black hover:bg-stone-50 rounded-lg font-bold text-sm">
-              Sign in to hire →
+            <button
+              onClick={() => onSignIn("company")}
+              className="group text-left border border-stone-200 rounded-2xl px-6 py-7 hover:border-amber-400 hover:bg-amber-50/40 transition"
+            >
+              <div className="text-2xl mb-2">🚀</div>
+              <div className="font-display text-xl font-bold mb-1">I'm a startup hiring</div>
+              <div className="text-sm text-stone-500 group-hover:text-amber-700">Sign in to hire →</div>
             </button>
           </div>
         </div>
+      </div>
 
-        {/* Footer */}
-        <hr className="border-stone-200" />
-        <div className="flex items-center justify-between text-xs text-stone-500 pt-2 pb-4">
+      <div className="border-t border-stone-200">
+        <div className="max-w-4xl mx-auto px-8 py-5 flex items-center justify-between text-xs text-stone-500">
           <div className="flex items-center gap-2">
             <Zap className="text-amber-500 fill-amber-500" size={14} />
             <span>The Lighthouse · Talent</span>
           </div>
-          <div className="flex items-center gap-4">
-            <button onClick={() => onSignIn()} className="hover:text-amber-600">Sign in</button>
-          </div>
+          <button onClick={() => onSignIn("investor")} className="hover:text-amber-600">Investor sign in</button>
         </div>
       </div>
     </div>
