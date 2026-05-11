@@ -60,14 +60,21 @@ export function useAuth() {
 // ============================================================
 // LOGIN SCREEN — 4 role tabs, mock credentials, one-call to login()
 // ============================================================
-// Four login tabs for demo/simulation. Investor accounts get the portfolio dropdown
-// automatically in the company portal once signed in.
+// Login tabs. Labels are framed for the audience: "Startup" / "PortCo Manager"
+// are what users see; "company" / "investor" remain the internal role keys.
 const ROLE_TABS = [
   { k: "talent", l: "Talent", desc: "Apply to the network" },
-  { k: "company", l: "Company", desc: "Search and hire from the network" },
-  { k: "investor", l: "Investor", desc: "Search across your portfolio companies" },
+  { k: "company", l: "Startup", desc: "Search and hire from the network" },
+  { k: "investor", l: "PortCo Manager", desc: "Search across your portfolio companies" },
   { k: "admin", l: "Admin", desc: "Lighthouse internal tools" },
 ];
+
+// Tab sets shown for each entry context. The default ("all") is the catch-all
+// shown when somebody clicks the small "Sign in" link in the header.
+const TAB_SETS = {
+  hire: ["company", "investor"],
+  all: ["talent", "company", "investor", "admin"],
+};
 
 const PRESET_FOR_TAB = {
   talent: "talent@lt.house",
@@ -79,6 +86,7 @@ const PRESET_FOR_TAB = {
 export function LoginScreen() {
   const { login, loading } = useAuth();
   const [view, setView] = useState("landing"); // landing | login
+  const [context, setContext] = useState("all"); // hire | all — gates which tabs show
   const [role, setRole] = useState("talent");
   const [email, setEmail] = useState(PRESET_FOR_TAB.talent);
   const [password, setPassword] = useState("password");
@@ -106,13 +114,22 @@ export function LoginScreen() {
 
   if (view === "landing") {
     return <PublicLanding
-      onSignIn={(preset) => {
-        if (preset) { setRole(preset); setEmail(PRESET_FOR_TAB[preset]); }
+      onSignIn={(preset, ctx) => {
+        const nextContext = ctx || (preset === "company" || preset === "investor" ? "hire" : "all");
+        setContext(nextContext);
+        const fallback = TAB_SETS[nextContext][0];
+        const chosen = preset && TAB_SETS[nextContext].includes(preset) ? preset : fallback;
+        setRole(chosen);
+        setEmail(PRESET_FOR_TAB[chosen]);
         setView("login");
       }}
       onApplyAsTalent={applyAsTalentDirect}
     />;
   }
+
+  const visibleTabs = ROLE_TABS.filter(t => TAB_SETS[context].includes(t.k));
+  const heading = context === "hire" ? "Sign in to hire" : "Sign in to continue";
+  const gridCols = visibleTabs.length === 2 ? "grid-cols-2" : "grid-cols-4";
 
   function pickRole(k) {
     setRole(k);
@@ -137,11 +154,11 @@ export function LoginScreen() {
             <div className="font-display text-3xl">Lighthouse</div>
             <span className="text-stone-500 text-sm">Talent</span>
           </div>
-          <div className="text-stone-500 text-sm">Sign in to continue.</div>
+          <div className="text-stone-500 text-sm">{heading}.</div>
         </div>
-        {/* Role tabs */}
-        <div className="grid grid-cols-4 mb-6 border border-stone-200 rounded-xl overflow-hidden text-xs">
-          {ROLE_TABS.map(t => (
+        {/* Role tabs (count depends on entry context) */}
+        <div className={`grid ${gridCols} mb-6 border border-stone-200 rounded-xl overflow-hidden text-xs`}>
+          {visibleTabs.map(t => (
             <button key={t.k} type="button" onClick={() => pickRole(t.k)}
               className={`py-3 font-bold transition ${role === t.k ? "bg-yellow-400 text-black" : "bg-white text-stone-500 hover:bg-stone-50"}`}>
               {t.l}
