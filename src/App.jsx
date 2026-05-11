@@ -298,15 +298,15 @@ function ModeSwitcher({ mode, setMode, signedInEmail, logout }) {
 
 // ============================================================
 // TALENT INTAKE FLOW (MVP — slim)
-// Steps: Landing → LinkedIn → Essentials (basics + startup/tech yes-no) → Confirm
+// Steps: LinkedIn → Essentials (basics + startup/tech yes-no) → Confirm
+// No interstitial landing — applicants drop straight into step 1.
 // ============================================================
 function TalentIntakeFlow({ user, logout }) {
-  // If the public landing CTA dropped us in directly, jump past the talent landing screen.
-  const skipLanding = typeof window !== "undefined" && window.__lt_skip_talent_landing;
-  const [step, setStep] = useState(skipLanding ? 1 : 0);
+  const [step, setStep] = useState(1);
+  // Consume the legacy skip-landing flag if it's set so it doesn't carry over.
   useEffect(() => {
     if (typeof window !== "undefined" && window.__lt_skip_talent_landing) {
-      window.__lt_skip_talent_landing = false; // consume the flag after first use
+      window.__lt_skip_talent_landing = false;
     }
   }, []);
   const [profile, setProfile] = useState({
@@ -320,7 +320,7 @@ function TalentIntakeFlow({ user, logout }) {
   });
   function update(patch) { setProfile(p => ({ ...p, ...patch })); }
   function next() { setStep(s => s + 1); }
-  function back() { setStep(s => Math.max(0, s - 1)); }
+  function back() { setStep(s => Math.max(1, s - 1)); }
 
   return (
     <div className="min-h-screen bg-white text-black">
@@ -331,86 +331,17 @@ function TalentIntakeFlow({ user, logout }) {
             <span className="font-display tracking-tight font-bold">Lighthouse</span>
             <span className="text-stone-500 text-xs">Talent</span>
           </div>
-          {step > 0 && step < 3 && <div className="text-xs text-stone-500 tabular-nums">Step {step} of 2</div>}
+          {step < 3 && <div className="text-xs text-stone-500 tabular-nums">Step {step} of 2</div>}
           <Button variant="ghost" size="sm" icon={LogOut} onClick={logout}>Exit</Button>
         </div>
-        {step > 0 && step < 3 && (
+        {step < 3 && (
           <div className="max-w-3xl mx-auto px-6 pb-3"><ProgressBar value={step} max={2} /></div>
         )}
       </div>
       <div className="max-w-3xl mx-auto px-6 py-10">
-        {step === 0 && <TalentLanding onStart={next} />}
         {step === 1 && <TalentLinkedIn profile={profile} update={update} onNext={next} onBack={back} />}
         {step === 2 && <TalentBasics profile={profile} update={update} onSubmit={() => setStep(3)} onBack={back} />}
         {step === 3 && <TalentConfirmation profile={profile} onExit={logout} />}
-      </div>
-    </div>
-  );
-}
-
-// Talent landing — mirrors the lt.house aesthetic: big ⚡ icon, Syne headline, emoji-led list sections, hr dividers, no card chrome.
-function TalentLanding({ onStart }) {
-  return (
-    <div className="space-y-10 py-8">
-      <div>
-        <div className="text-5xl mb-6">⚡</div>
-        <h1 className="text-4xl md:text-5xl font-display tracking-tight leading-[1.05]">
-          Get on the list.
-        </h1>
-        <p className="text-stone-700 text-lg mt-6 max-w-2xl leading-relaxed">
-          The Lighthouse Talent Network is a curated database of operators, builders, and creatives for Nashville's best startups. Every member is personally vetted by Zap.
-        </p>
-      </div>
-
-      <hr className="border-stone-200" />
-
-      <div className="grid md:grid-cols-2 gap-x-12 gap-y-8">
-        <div>
-          <h3 className="text-lg font-display font-bold mb-3">How it works</h3>
-          <div className="space-y-2.5 text-base">
-            <div className="flex items-start gap-3"><span className="text-xl">🔗</span><span>Connect your LinkedIn</span></div>
-            <div className="flex items-start gap-3"><span className="text-xl">📝</span><span>The essentials — location, role, experience</span></div>
-            <div className="flex items-start gap-3"><span className="text-xl">🚀</span><span>Submit — Zap reviews personally</span></div>
-          </div>
-        </div>
-        <div>
-          <h3 className="text-lg font-display font-bold mb-3">What happens next</h3>
-          <div className="space-y-2.5 text-base">
-            <div className="flex items-start gap-3"><span className="text-xl">☕</span><span>Coffee or Zoom with Zap</span></div>
-            <div className="flex items-start gap-3"><span className="text-xl">✅</span><span>You're added to the live database</span></div>
-            <div className="flex items-start gap-3"><span className="text-xl">🤝</span><span>We make warm intros directly</span></div>
-            <div className="flex items-start gap-3"><span className="text-xl">🏠</span><span>Founders come to you — no cold applications</span></div>
-          </div>
-        </div>
-      </div>
-
-      <hr className="border-stone-200" />
-
-      <div className="grid md:grid-cols-2 gap-x-12 gap-y-8">
-        <div>
-          <h3 className="text-lg font-display font-bold mb-3">Who's in the network</h3>
-          <div className="space-y-2.5 text-base">
-            <div className="flex items-start gap-3"><span className="text-xl">⚙️</span><span>Operators</span></div>
-            <div className="flex items-start gap-3"><span className="text-xl">🔧</span><span>Builders</span></div>
-            <div className="flex items-start gap-3"><span className="text-xl">🎨</span><span>Creatives</span></div>
-            <div className="flex items-start gap-3"><span className="text-xl">🦄</span><span>Founders</span></div>
-          </div>
-        </div>
-        <div>
-          <h3 className="text-lg font-display font-bold mb-3">Why join</h3>
-          <div className="space-y-2.5 text-base">
-            <div className="flex items-start gap-3"><span className="text-xl">🎯</span><span>No noise — Zap vets every connection</span></div>
-            <div className="flex items-start gap-3"><span className="text-xl">⚡</span><span>Nashville's most curated startup network</span></div>
-            <div className="flex items-start gap-3"><span className="text-xl">💼</span><span>Real intros to real founders</span></div>
-            <div className="flex items-start gap-3"><span className="text-xl">🌟</span><span>Free for talent. Always.</span></div>
-          </div>
-        </div>
-      </div>
-
-      <hr className="border-stone-200" />
-
-      <div>
-        <Button size="lg" icon={Zap} onClick={onStart}>Start your application</Button>
       </div>
     </div>
   );
@@ -470,8 +401,7 @@ function TalentLinkedIn({ profile, update, onNext, onBack }) {
           <div className="mt-2 text-xs text-stone-500">You can correct the auto-filled fields on the next step.</div>
         </Card>
       )}
-      <div className="flex justify-between pt-2">
-        <Button variant="ghost" icon={ChevronLeft} onClick={onBack}>Back</Button>
+      <div className="flex justify-end pt-2">
         <Button onClick={onNext} icon={ArrowRight} disabled={!profile.linkedinConnected}>Continue</Button>
       </div>
     </div>
