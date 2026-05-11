@@ -552,12 +552,38 @@ function ChipInput({ value = [], onChange, placeholder }) {
 // Drag-to-rank motivations step removed. Intake is now LinkedIn → Essentials → Confirmation.
 
 function TalentConfirmation({ profile, onExit }) {
+  const [newsletterEmail, setNewsletterEmail] = useState(profile.email || "");
+  const [subscribed, setSubscribed] = useState(false);
+  function subscribe(e) {
+    e.preventDefault();
+    if (!newsletterEmail.trim()) return;
+    setSubscribed(true);
+  }
   return (
-    <div className="space-y-6 text-center py-12">
-      <CheckCircle2 size={56} className="text-amber-500 mx-auto" />
-      <p className="text-stone-700 text-lg max-w-md mx-auto leading-relaxed">
-        You're now part of the exclusive founder talent community. We'll get back to you if we find a match.
-      </p>
+    <div className="space-y-8 text-center py-12">
+      <div className="space-y-6">
+        <CheckCircle2 size={56} className="text-amber-500 mx-auto" />
+        <p className="text-stone-700 text-lg max-w-md mx-auto leading-relaxed">
+          You're now part of the exclusive founder talent community. We'll get back to you if we find a match.
+        </p>
+      </div>
+
+      <div className="max-w-sm mx-auto border-t border-stone-200 pt-6">
+        {subscribed ? (
+          <div className="text-sm text-emerald-700 inline-flex items-center gap-1.5">
+            <CheckCircle2 size={14} /> Subscribed to the newsletter
+          </div>
+        ) : (
+          <form onSubmit={subscribe} className="space-y-2">
+            <div className="text-xs uppercase tracking-wider text-stone-500 font-bold">Newsletter</div>
+            <div className="flex gap-2">
+              <Input type="email" value={newsletterEmail} onChange={e => setNewsletterEmail(e.target.value)} placeholder="you@email.com" className="text-sm" />
+              <Button type="submit" size="sm" icon={Mail}>Subscribe</Button>
+            </div>
+          </form>
+        )}
+      </div>
+
       <button onClick={onExit} className="text-sm text-stone-500 hover:text-amber-600 underline underline-offset-4">Sign out</button>
     </div>
   );
