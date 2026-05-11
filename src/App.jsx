@@ -7,7 +7,7 @@ import {
   CheckCircle2, Sparkles, X, ArrowRight, ArrowLeft, MapPin, Briefcase, GraduationCap,
   Mail, Phone, Star, Users, Clock, Building2, Calendar, Shield, Settings, BookOpenCheck,
   FileText, MessageSquare, Send, Plus, Eye, LogOut, Home, Database, KanbanSquare,
-  AlertCircle, Coffee, Save, Edit3, ChevronsUpDown, GripVertical, RefreshCw, Globe,
+  AlertCircle, Coffee, Save, Edit3, ChevronsUpDown, RefreshCw, Globe,
 } from "lucide-react";
 import { CANDIDATES, COMPANIES, INVESTORS, SAVED_SEARCHES, SHORTLISTS, RESOURCES, INITIAL_INTRO_REQUESTS, DEMO_TALENT_CANDIDATE_ID } from "./data.js";
 import { AuthProvider, useAuth, LoginScreen } from "./auth.jsx";
@@ -16,26 +16,6 @@ import { AuthProvider, useAuth, LoginScreen } from "./auth.jsx";
 // CONSTANTS
 // ============================================================
 const ROLE_TYPES = ["Engineering", "Product", "Design", "Operations", "Marketing", "Sales", "Customer Success", "Data", "Finance", "Founding Team", "Other"];
-
-const MOTIVATIONS = [
-  "I want to own something — equity, decisions, outcomes.",
-  "I want to learn faster than I would anywhere else.",
-  "I want to find a startup where I care deeply about the specific problem being solved.",
-  "I want to build something from scratch, not maintain what already exists.",
-  "I'm bored at big company life and I'm finally doing something about it.",
-  "I want the financial upside if the company wins big.",
-  "I just need a job.",
-];
-
-const MOTIVATION_SHORT = {
-  "I want to own something — equity, decisions, outcomes.": "Wants ownership",
-  "I want to learn faster than I would anywhere else.": "Wants to learn faster",
-  "I want to find a startup where I care deeply about the specific problem being solved.": "Mission-driven",
-  "I want to build something from scratch, not maintain what already exists.": "Wants to build 0→1",
-  "I'm bored at big company life and I'm finally doing something about it.": "Escaping big-co",
-  "I want the financial upside if the company wins big.": "Upside-driven",
-  "I just need a job.": "Just needs a job",
-};
 
 const RELOCATION_LABELS = {
   in_tn: "In Tennessee",
@@ -50,8 +30,6 @@ const RELOCATION_OPTIONS = [
 ];
 
 const WORK_MODES = ["In-person Nashville", "Hybrid", "Remote", "Open"];
-const STARTUP_STAGES = ["Pre-seed", "Seed", "Series A", "Series B+", "Multiple stages"];
-const STARTUP_SIZES = ["1-10", "11-50", "51-200", "200+", "Multiple sizes"];
 
 // Lightweight browser-history shim — when `active` becomes truthy we push a state entry, and
 // any subsequent popstate (browser back / swipe-back) calls onBack to reverse the navigation
@@ -193,10 +171,6 @@ function filterCandidates(filters, candidates) {
     // has startup
     if (filters.hasStartup === "yes" && !c.hasStartupExperience) return false;
     if (filters.hasStartup === "no" && c.hasStartupExperience) return false;
-    // startup stage (if filter set and candidate has experience)
-    if (filters.startupStages && filters.startupStages.length > 0) {
-      if (!c.startupStage || !filters.startupStages.includes(c.startupStage)) return false;
-    }
     // location availability — defaults to all three; only filter if subset selected
     if (filters.locAvailability && filters.locAvailability.length > 0 && filters.locAvailability.length < 3) {
       if (!filters.locAvailability.includes(c.relocationStatus)) return false;
@@ -208,10 +182,6 @@ function filterCandidates(filters, candidates) {
     // work mode
     if (filters.workModes && filters.workModes.length > 0) {
       if (!filters.workModes.includes(c.workMode)) return false;
-    }
-    // motivation
-    if (filters.motivations && filters.motivations.length > 0) {
-      if (!filters.motivations.includes(c.topMotivation)) return false;
     }
     return true;
   });
@@ -328,7 +298,7 @@ function ModeSwitcher({ mode, setMode, signedInEmail, logout }) {
 
 // ============================================================
 // TALENT INTAKE FLOW (MVP — slim)
-// Steps: Landing → LinkedIn → Basics → Motivations (drag-rank) → Startup/tech yes/no → Confirm
+// Steps: Landing → LinkedIn → Essentials (basics + startup/tech yes-no) → Confirm
 // ============================================================
 function TalentIntakeFlow({ user, logout }) {
   // If the public landing CTA dropped us in directly, jump past the talent landing screen.
@@ -633,11 +603,9 @@ const DEFAULT_FILTERS = {
   yoeMin: 0, yoeMax: 25,
   hasTech: "either",
   hasStartup: "either",
-  startupStages: [],
   locAvailability: ["in_tn", "willing_to_relocate", "remote_only"],
   currentLocationFilter: "",
   workModes: [],
-  motivations: [],
 };
 
 function CompanyPortal({ user, logout }) {
@@ -954,18 +922,6 @@ function FilterSidebar({ filters, setFilters, onApply }) {
         <Field label="Work mode">
           <MultiSelectChips options={WORK_MODES} selected={filters.workModes} onChange={v => setFilters({ ...filters, workModes: v })} />
         </Field>
-        <Field label="Specific motivation">
-          <div className="space-y-1">
-            {MOTIVATIONS.map(m => (
-              <label key={m} className="flex items-start gap-2 text-xs cursor-pointer">
-                <input type="checkbox" checked={filters.motivations.includes(m)}
-                  onChange={e => setFilters({ ...filters, motivations: e.target.checked ? [...filters.motivations, m] : filters.motivations.filter(x => x !== m) })}
-                  className="accent-yellow-400 mt-0.5" />
-                <span>{MOTIVATION_SHORT[m] || m.slice(0, 30)}</span>
-              </label>
-            ))}
-          </div>
-        </Field>
         <Button size="sm" className="w-full" onClick={onApply} icon={RefreshCw}>Apply filters</Button>
       </Card>
     </div>
@@ -993,9 +949,6 @@ function CandidateCardMVP({ candidate, onOpen, onRequestIntro, onAddToShortlist,
             <span><MapPin size={11} className="inline mr-0.5" /> {locDisplay}</span>
             <span><Briefcase size={11} className="inline mr-0.5" /> {candidate.workMode}</span>
           </div>
-          {candidate.topMotivation && (
-            <div className="text-xs text-stone-700 mt-2 italic">Top motivation: <span className="font-bold">{MOTIVATION_SHORT[candidate.topMotivation]}</span></div>
-          )}
           <div className="flex items-center gap-2 mt-3 flex-wrap" onClick={(e) => e.stopPropagation()}>
             <Button size="sm" icon={Coffee} onClick={stop(onRequestIntro)}>Request Intro</Button>
             <div className="relative">
@@ -1015,40 +968,6 @@ function CandidateCardMVP({ candidate, onOpen, onRequestIntro, onAddToShortlist,
           </div>
         </div>
       </div>
-    </Card>
-  );
-}
-
-function RankingDisclosure({ ranked }) {
-  const [open, setOpen] = useState(false);
-  if (!ranked || ranked.length === 0) return (
-    <Card>
-      <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-1">Why startups — full ranking</div>
-      <div className="text-sm text-stone-500 italic">Candidate skipped the ranking question.</div>
-    </Card>
-  );
-  return (
-    <Card>
-      <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between text-left">
-        <div className="text-xs uppercase tracking-wider text-stone-500 font-bold">Why startups — full ranking</div>
-        <span className="flex items-center gap-1 text-xs text-stone-500">{open ? "Hide" : `Show all 7`} {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}</span>
-      </button>
-      {!open && (
-        <div className="mt-3 flex items-center gap-3 p-2 bg-yellow-50 border border-yellow-200 rounded-lg text-sm">
-          <span className="w-6 h-6 rounded-full bg-yellow-300 text-amber-900 flex items-center justify-center font-bold text-xs flex-shrink-0">1</span>
-          <span className="font-semibold">{ranked[0]}</span>
-        </div>
-      )}
-      {open && (
-        <div className="space-y-2 mt-3">
-          {ranked.map((m, i) => (
-            <div key={m} className="flex items-center gap-3 p-2 bg-stone-50 border border-stone-200 rounded-lg text-sm">
-              <span className="w-6 h-6 rounded-full bg-yellow-100 text-amber-800 flex items-center justify-center font-bold text-xs flex-shrink-0">{i + 1}</span>
-              <span>{m}</span>
-            </div>
-          ))}
-        </div>
-      )}
     </Card>
   );
 }
@@ -1457,7 +1376,6 @@ function AdminDatabase({ candidates, onOpen }) {
                 <th className="text-left p-3">Current role</th>
                 <th className="text-left p-3">Yrs</th>
                 <th className="text-left p-3">Location</th>
-                <th className="text-left p-3">Top motivation</th>
                 <th className="text-center p-3">Tech</th>
                 <th className="text-center p-3">Startup</th>
                 <th className="text-left p-3">Status</th>
@@ -1471,7 +1389,6 @@ function AdminDatabase({ candidates, onOpen }) {
                   <td className="p-3 text-stone-700 max-w-[200px] truncate">{c.currentRole}</td>
                   <td className="p-3">{c.yearsExperience}</td>
                   <td className="p-3 text-xs text-stone-500">{c.currentLocation} <span className="text-[10px] block">{RELOCATION_LABELS[c.relocationStatus]}</span></td>
-                  <td className="p-3 text-xs text-stone-700">{MOTIVATION_SHORT[c.topMotivation] || "—"}</td>
                   <td className="p-3 text-center">{c.hasTechExperience ? "✓" : "—"}</td>
                   <td className="p-3 text-center">{c.hasStartupExperience ? "✓" : "—"}</td>
                   <td className="p-3"><Tag color={c.vettingStatus === "Active" ? "green" : c.vettingStatus === "Declined" ? "red" : "yellow"} size="sm">{c.vettingStatus}</Tag></td>
