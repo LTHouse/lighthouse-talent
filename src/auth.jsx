@@ -60,17 +60,17 @@ export function useAuth() {
 // ============================================================
 // LOGIN SCREEN — 4 role tabs, mock credentials, one-call to login()
 // ============================================================
+// MVP spec: only 3 login tabs. Investors log in via Company tab — investor accounts get the
+// portfolio dropdown automatically in the company portal.
 const ROLE_TABS = [
-  { k: "talent", l: "Talent", desc: "Apply or track your application" },
-  { k: "company", l: "Company", desc: "Search and hire from the network" },
-  { k: "investor", l: "Investor", desc: "Manage portfolio company hiring" },
+  { k: "talent", l: "Talent", desc: "Apply to the network" },
+  { k: "company", l: "Company", desc: "Search and hire from the network (investors too)" },
   { k: "admin", l: "Admin", desc: "Lighthouse internal tools" },
 ];
 
 const PRESET_FOR_TAB = {
   talent: "talent@lt.house",
   company: "company@lt.house",
-  investor: "investor@lt.house",
   admin: "zap@lt.house",
 };
 
@@ -107,7 +107,7 @@ export function LoginScreen() {
           <div className="text-stone-500 text-sm">Sign in to continue.</div>
         </div>
         {/* Role tabs */}
-        <div className="grid grid-cols-4 mb-6 border border-stone-200 rounded-xl overflow-hidden text-xs">
+        <div className="grid grid-cols-3 mb-6 border border-stone-200 rounded-xl overflow-hidden text-xs">
           {ROLE_TABS.map(t => (
             <button key={t.k} type="button" onClick={() => pickRole(t.k)}
               className={`py-3 font-bold transition ${role === t.k ? "bg-yellow-400 text-black" : "bg-white text-stone-500 hover:bg-stone-50"}`}>

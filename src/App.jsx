@@ -239,13 +239,75 @@ function AuthedApp() {
   return <SignedInShell key={user.email} user={user} logout={logout} />;
 }
 
+// Demo-mode synthetic users so the ModeSwitcher can impersonate any role
+// without making the user log out and back in.
+const DEMO_USERS = {
+  talent: { email: "talent@lt.house", role: "talent", name: "Eliana Eskinazi", candidateId: DEMO_TALENT_CANDIDATE_ID },
+  company: { email: "company@lt.house", role: "company", name: "SoundHealth", companyId: 5 },
+  investor: { email: "investor@lt.house", role: "investor", name: "Overline VC", investorId: 1 },
+  admin: { email: "zap@lt.house", role: "admin", name: "Zap" },
+};
+
 function SignedInShell({ user, logout }) {
-  const role = user.role;
-  // Investor = company portal + portco dropdown
-  if (role === "talent") return <TalentIntakeFlow user={user} logout={logout} />;
-  if (role === "company" || role === "investor") return <CompanyPortal user={user} logout={logout} />;
-  if (role === "admin") return <AdminPortal user={user} logout={logout} />;
-  return null;
+  const [mode, setMode] = useState(user.role);
+  const effectiveUser = mode === user.role ? user : (DEMO_USERS[mode] || user);
+  const role = effectiveUser.role;
+  return (
+    <>
+      <div key={role}>
+        {role === "talent" && <TalentIntakeFlow user={effectiveUser} logout={logout} />}
+        {(role === "company" || role === "investor") && <CompanyPortal user={effectiveUser} logout={logout} />}
+        {role === "admin" && <AdminPortal user={effectiveUser} logout={logout} />}
+      </div>
+      <ModeSwitcher mode={mode} setMode={setMode} signedInEmail={user.email} logout={logout} />
+    </>
+  );
+}
+
+// Persistent floating mode-switcher pill — always visible bottom-right.
+function ModeSwitcher({ mode, setMode, signedInEmail, logout }) {
+  const [open, setOpen] = useState(false);
+  const modes = [
+    { k: "talent", label: "Talent", desc: "Candidate intake flow" },
+    { k: "company", label: "Company", desc: "Hire from the network" },
+    { k: "investor", label: "Investor", desc: "Company portal + portco tag" },
+    { k: "admin", label: "Admin", desc: "Database, vetting, intro queue" },
+  ];
+  const current = modes.find(m => m.k === mode);
+  return (
+    <>
+      <button onClick={() => setOpen(!open)}
+        className="fixed bottom-5 right-5 z-50 bg-black text-yellow-300 hover:bg-stone-800 rounded-full pl-3 pr-4 py-2.5 shadow-2xl flex items-center gap-2 font-bold text-sm transition-all border border-stone-800">
+        <span className="w-7 h-7 bg-yellow-400 rounded-full flex items-center justify-center"><Zap size={14} className="text-black fill-black" /></span>
+        <span>Demo · {current?.label || "—"}</span>
+        <ChevronUp size={14} className={`transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40 bg-black/30" onClick={() => setOpen(false)} />
+          <div className="fixed bottom-20 right-5 z-50 w-80 bg-black border border-stone-800 rounded-2xl shadow-2xl p-2 text-stone-100">
+            <div className="p-3 pb-2">
+              <div className="text-xs uppercase tracking-wider text-yellow-300 font-bold mb-1">Demo navigator</div>
+              <div className="text-xs text-stone-400">Flip between the four sides of the platform without signing out. Demo/MVP only.</div>
+            </div>
+            {modes.map(m => (
+              <button key={m.k} onClick={() => { setMode(m.k); setOpen(false); }}
+                className={`w-full text-left flex items-start gap-3 p-3 rounded-xl transition ${mode === m.k ? "bg-yellow-400 text-black" : "hover:bg-stone-900 text-stone-100"}`}>
+                <div className="flex-1 min-w-0">
+                  <div className="font-bold text-sm">{m.label}</div>
+                  <div className={`text-xs mt-0.5 ${mode === m.k ? "text-stone-700" : "text-stone-400"}`}>{m.desc}</div>
+                </div>
+              </button>
+            ))}
+            <div className="p-3 pt-2 mt-1 border-t border-stone-800 flex items-center justify-between">
+              <div className="text-[10px] text-stone-500 truncate">Signed in: <span className="font-mono">{signedInEmail}</span></div>
+              <button onClick={logout} className="text-xs text-yellow-300 hover:underline">Sign out</button>
+            </div>
+          </div>
+        </>
+      )}
+    </>
+  );
 }
 
 // ============================================================
@@ -274,7 +336,7 @@ function TalentIntakeFlow({ user, logout }) {
         <div className="max-w-3xl mx-auto px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Zap className="text-amber-500 fill-amber-500" size={18} />
-            <span className="font-black tracking-tight">Lighthouse</span>
+            <span className="font-display tracking-tight font-bold">Lighthouse</span>
             <span className="text-stone-500 text-xs">Talent</span>
           </div>
           {step > 0 && step < 5 && <div className="text-xs text-stone-500 tabular-nums">Step {step} of 4</div>}
@@ -697,7 +759,7 @@ function CompanyPortal({ user, logout }) {
           <div className="flex items-center gap-6">
             <button onClick={() => setTab("search")} className="flex items-center gap-2 hover:text-amber-600">
               <Zap className="text-amber-500 fill-amber-500" size={18} />
-              <span className="font-black tracking-tight">Lighthouse</span>
+              <span className="font-display tracking-tight font-bold">Lighthouse</span>
               <span className="text-stone-500 text-xs">{investor ? "Investor" : "Hire"}</span>
             </button>
             <nav className="hidden md:flex items-center gap-1">
@@ -1272,7 +1334,7 @@ function ResourcesView() {
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {categories.map(c => (
           <Card key={c.name} onClick={() => setCategory(c.name)} className="hover:border-amber-400 !p-6">
-            <div className="text-4xl mb-3">{CATEGORY_META[c.name]?.icon || "📚"}</div>
+            <div className="text-4xl mb-3 font-display">{CATEGORY_META[c.name]?.icon || "📚"}</div>
             <div className="font-display text-xl">{c.name}</div>
             <div className="text-sm text-stone-500 mt-1">{CATEGORY_META[c.name]?.desc}</div>
             <div className="text-xs text-stone-700 mt-3 font-bold">{c.items.length} {c.items[0]?.type === "download" ? "downloads" : "articles"}</div>
