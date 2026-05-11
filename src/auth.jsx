@@ -84,6 +84,18 @@ export function LoginScreen() {
   const [password, setPassword] = useState("password");
   const [err, setErr] = useState(null);
 
+  // When we transition off the landing page, push a history entry so the browser
+  // back button (or swipe-back gesture) returns to the landing page instead of
+  // leaving the site entirely.
+  useEffect(() => {
+    if (view === "landing") return;
+    const stateId = Date.now() + Math.random();
+    window.history.pushState({ ltStateId: stateId }, "");
+    const handler = () => setView("landing");
+    window.addEventListener("popstate", handler);
+    return () => window.removeEventListener("popstate", handler);
+  }, [view]);
+
   // Direct-apply path: log in as talent + flag the intake to skip its landing screen
   // and drop the user straight into the LinkedIn step.
   async function applyAsTalentDirect() {

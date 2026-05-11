@@ -53,6 +53,22 @@ const WORK_MODES = ["In-person Nashville", "Hybrid", "Remote", "Open"];
 const STARTUP_STAGES = ["Pre-seed", "Seed", "Series A", "Series B+", "Multiple stages"];
 const STARTUP_SIZES = ["1-10", "11-50", "51-200", "200+", "Multiple sizes"];
 
+// Lightweight browser-history shim — when `active` becomes truthy we push a state entry, and
+// any subsequent popstate (browser back / swipe-back) calls onBack to reverse the navigation
+// inside the SPA instead of leaving the site. Used at every key sub-view transition.
+function useBackHandler(active, onBack) {
+  useEffect(() => {
+    if (!active) return;
+    const stateId = Date.now() + Math.random();
+    window.history.pushState({ ltStateId: stateId }, "");
+    function handler(e) { onBack(); }
+    window.addEventListener("popstate", handler);
+    return () => {
+      window.removeEventListener("popstate", handler);
+    };
+  }, [active]);
+}
+
 // ============================================================
 // UI PRIMITIVES (lt.house brand)
 // ============================================================
@@ -701,6 +717,9 @@ function CompanyPortal({ user, logout }) {
   const [results, setResults] = useState([]);
   const [activeCandidateId, setActiveCandidateId] = useState(null);
   const [showIntroModal, setShowIntroModal] = useState(null); // candidate id
+  // Browser back/swipe-back: clear the candidate profile + intro modal first; don't leave the site.
+  useBackHandler(!!activeCandidateId, () => setActiveCandidateId(null));
+  useBackHandler(!!showIntroModal, () => setShowIntroModal(null));
   const [searches, setSearches] = useState(SAVED_SEARCHES.filter(s => investor ? s.companyId === -investor.id : s.companyId === (user.companyId || 5)));
   const [shortlists, setShortlists] = useState(SHORTLISTS.filter(s => investor ? s.companyId === -investor.id : s.companyId === (user.companyId || 5)));
   const [portcoTag, setPortcoTag] = useState(null); // for investor users
@@ -1029,8 +1048,10 @@ function CandidateCardMVP({ candidate, onOpen, onRequestIntro, onAddToShortlist,
   const locDisplay = candidate.relocationStatus === "in_tn" ? candidate.currentLocation
     : candidate.relocationStatus === "willing_to_relocate" ? `${candidate.currentLocation} — willing to relocate`
     : `${candidate.currentLocation} — remote only`;
+  // Whole card is clickable. Inner buttons stop propagation so they don't also open the profile.
+  const stop = (fn) => (e) => { e.stopPropagation(); if (fn) fn(); };
   return (
-    <Card className="hover:border-amber-400 transition">
+    <Card onClick={onOpen} className="hover:border-amber-400 hover:shadow-sm transition cursor-pointer">
       <div className="flex gap-4">
         <Avatar candidate={candidate} size={48} />
         <div className="flex-1 min-w-0">
@@ -1046,15 +1067,15 @@ function CandidateCardMVP({ candidate, onOpen, onRequestIntro, onAddToShortlist,
           {candidate.topMotivation && (
             <div className="text-xs text-stone-700 mt-2 italic">Top motivation: <span className="font-bold">{MOTIVATION_SHORT[candidate.topMotivation]}</span></div>
           )}
-          <div className="flex items-center gap-2 mt-3 flex-wrap">
-            <Button size="sm" icon={Coffee} onClick={onRequestIntro}>Request Intro</Button>
+          <div className="flex items-center gap-2 mt-3 flex-wrap" onClick={(e) => e.stopPropagation()}>
+            <Button size="sm" icon={Coffee} onClick={stop(onRequestIntro)}>Request Intro</Button>
             <div className="relative">
-              <Button size="sm" variant="secondary" icon={Star} onClick={() => setShowShort(!showShort)}>Save</Button>
+              <Button size="sm" variant="secondary" icon={Star} onClick={stop(() => setShowShort(!showShort))}>Save</Button>
               {showShort && (
                 <div className="absolute top-9 left-0 w-56 bg-white border border-stone-300 rounded-lg p-2 z-30 shadow-xl">
                   {shortlists.length === 0 && <div className="text-xs text-stone-500 p-2">No shortlists yet.</div>}
                   {shortlists.map(s => (
-                    <button key={s.id} onClick={() => { onAddToShortlist(s.id); setShowShort(false); }}
+                    <button key={s.id} onClick={stop(() => { onAddToShortlist(s.id); setShowShort(false); })}
                       className="w-full text-left text-xs p-2 hover:bg-stone-50 rounded">
                       {s.name} <span className="text-stone-500">({s.candidateIds.length})</span>
                     </button>
@@ -1062,7 +1083,6 @@ function CandidateCardMVP({ candidate, onOpen, onRequestIntro, onAddToShortlist,
                 </div>
               )}
             </div>
-            <Button size="sm" variant="ghost" icon={Eye} onClick={onOpen}>View profile</Button>
           </div>
         </div>
       </div>
@@ -1410,6 +1430,8 @@ function AdminPortal({ user, logout }) {
     }, 1000);
     return () => clearInterval(interval);
   }, []);
+  useBackHandler(!!activeCandidateId, () => { setActiveCandidateId(null); setView("database"); });
+  useBackHandler(!!activeIntroId, () => { setActiveIntroId(null); setView("intros"); });
   function updateCandidate(id, patch) { setCandidates(cs => cs.map(c => c.id === id ? { ...c, ...patch } : c)); }
   function updateIntro(id, patch) {
     const next = introRequests.map(r => r.id === id ? { ...r, ...patch } : r);
