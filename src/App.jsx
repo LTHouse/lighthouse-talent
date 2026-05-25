@@ -1250,11 +1250,23 @@ function FeaturedHeroCarousel({ features, onOpenCandidate }) {
             {features.map((f, i) => {
               const c = CANDIDATES.find(c => c.id === f.candidate_id);
               if (!c) return null;
+              const motivationShort = c.topMotivation ? MOTIVATION_SHORT[c.topMotivation] : null;
+              const isActive = i === index;
               return (
                 <button key={f.candidate_id} onClick={() => jumpTo(i)}
-                  className={`snap-start flex-shrink-0 w-20 text-center p-1.5 rounded-lg border transition ${i === index ? "border-amber-400 bg-amber-50/60" : "border-transparent hover:border-stone-200"}`}>
-                  <div className="flex justify-center mb-1"><Avatar candidate={c} size={36} /></div>
-                  <div className="text-[10px] font-semibold truncate">{c.firstName} {c.lastName}</div>
+                  className={`snap-start flex-shrink-0 w-[200px] text-left p-3 rounded-xl border transition ${isActive ? "border-amber-400 bg-amber-50/60 shadow-sm" : "border-stone-200 bg-white hover:border-stone-300"}`}>
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <Avatar candidate={c} size={28} />
+                    <div className="font-bold text-sm truncate flex-1 min-w-0">{c.firstName} {c.lastName}</div>
+                    <VettedBadge candidate={c} size={11} />
+                  </div>
+                  <div className="text-xs text-stone-500 truncate mt-1.5">{truncateOnSlash(c.currentRole)}{c.currentCompany && ` · ${c.currentCompany}`}</div>
+                  <div className="text-[11px] text-stone-500 truncate">{c.yearsExperience} yrs · {c.currentLocation}</div>
+                  {motivationShort && (
+                    <div className="mt-1.5">
+                      <span className="inline-block bg-yellow-50/60 border border-yellow-200/60 text-amber-800 rounded-full px-1.5 py-0.5 text-[10px] truncate max-w-full">{motivationShort}</span>
+                    </div>
+                  )}
                 </button>
               );
             })}
@@ -1269,49 +1281,58 @@ function FeaturedHeroCard({ candidate, note, onOpen }) {
   const motivationShort = candidate.topMotivation ? MOTIVATION_SHORT[candidate.topMotivation] : null;
   return (
     <Card onClick={onOpen} padded={false} className="cursor-pointer overflow-hidden hover:border-amber-400 transition">
-      <div className="grid md:grid-cols-[200px_1fr] gap-0 min-h-[280px]">
-        {/* Left: large avatar with vetted corner badge */}
-        <div className="flex items-center justify-center bg-gradient-to-br from-amber-50 to-stone-50 p-6 md:p-8 relative">
+      <div className="grid md:grid-cols-[160px_1fr] gap-0">
+        {/* Left: avatar — flat neutral surface, consistent with other cards on the page */}
+        <div className="flex items-center justify-center bg-stone-50 p-4 md:p-5 border-b md:border-b-0 md:border-r border-stone-200">
           <div className="relative">
-            <Avatar candidate={candidate} size={120} />
+            <Avatar candidate={candidate} size={90} />
             {candidate.vetted_in_person && (
-              <span className="absolute -bottom-1 -right-1 bg-white border-2 border-amber-400 rounded-full p-1 shadow">
-                <Zap size={16} className="text-amber-500 fill-amber-500" />
+              <span className="absolute -bottom-0.5 -right-0.5 bg-white border border-stone-200 rounded-full p-0.5 shadow-sm">
+                <Zap size={12} className="text-amber-500 fill-amber-500" />
               </span>
             )}
           </div>
         </div>
-        {/* Right: editorial content */}
-        <div className="p-6 md:p-8 flex flex-col">
+        {/* Right: editorial content — tighter line spacing, button closer to content */}
+        <div className="p-5 md:p-6 flex flex-col">
           <div className="flex items-center gap-2 flex-wrap">
-            <h3 className="font-display text-3xl">{candidate.firstName} {candidate.lastName}</h3>
-            <VettedBadge candidate={candidate} size={18} />
+            <h3 className="font-display text-2xl">{candidate.firstName} {candidate.lastName}</h3>
+            <VettedBadge candidate={candidate} size={16} />
             <LinkedInVerifiedBadge candidate={candidate} />
           </div>
-          <div className="text-stone-600 mt-1">{candidate.currentRole}{candidate.currentCompany && ` · ${candidate.currentCompany}`}</div>
-          <div className="flex flex-wrap items-center gap-3 mt-3 text-xs text-stone-500">
+          <div className="text-stone-600 text-sm mt-0.5">{truncateOnSlash(candidate.currentRole)}{candidate.currentCompany && ` · ${candidate.currentCompany}`}</div>
+          <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-stone-500">
             <span><Clock size={11} className="inline mr-0.5" /> {candidate.yearsExperience} yrs</span>
             <span><MapPin size={11} className="inline mr-0.5" /> {candidate.currentLocation}</span>
             <RelocateBadge candidate={candidate} />
           </div>
           {motivationShort && (
-            <div className="mt-3">
+            <div className="mt-2">
               <span className="inline-block bg-yellow-50/60 border border-yellow-200/60 text-amber-800 rounded-full px-2.5 py-0.5 text-xs">{motivationShort}</span>
             </div>
           )}
           {note && (
-            <blockquote className="mt-4 text-sm text-stone-700 italic flex gap-2 max-w-prose">
-              <Zap size={14} className="text-amber-500 fill-amber-500 flex-shrink-0 mt-0.5" />
+            <blockquote className="mt-3 text-sm text-stone-700 italic flex gap-2 max-w-prose">
+              <Zap size={13} className="text-amber-500 fill-amber-500 flex-shrink-0 mt-0.5" />
               <span>{note}</span>
             </blockquote>
           )}
-          <div className="mt-auto pt-5">
-            <Button icon={ArrowRight} onClick={(e) => { e.stopPropagation(); onOpen(); }}>View profile</Button>
+          <div className="mt-3">
+            <Button size="sm" icon={ArrowRight} onClick={(e) => { e.stopPropagation(); onOpen(); }}>View profile</Button>
           </div>
         </div>
       </div>
     </Card>
   );
+}
+
+// Truncate role labels at the first "/" — e.g.
+//   "Customer Success Manager/Account Manager/Account Executives" → "Customer Success Manager"
+// Keeps long slash-separated role lists from blowing out the carousel cards.
+function truncateOnSlash(s) {
+  if (!s) return "";
+  const i = s.indexOf("/");
+  return i > 0 ? s.slice(0, i).trim() : s;
 }
 
 function CompanySearch({ filters, setFilters, nlQuery, setNlQuery, usedAdvanced, searched, loading, results,
@@ -2106,7 +2127,17 @@ function AdminCandidateProfile({ candidate, updateCandidate, onBack, sendForRevi
             <div className="text-xs text-stone-500 mt-1 flex flex-wrap gap-3">
               <span><Mail size={11} className="inline mr-0.5" /> {candidate.email}</span>
               <span><Phone size={11} className="inline mr-0.5" /> {candidate.phone}</span>
-              <a href={candidate.linkedin} target="_blank" rel="noreferrer" className="hover:text-amber-600"><Linkedin size={11} className="inline mr-0.5" /> LinkedIn</a>
+              {candidate.linkedin ? (
+                <a href={candidate.linkedin} target="_blank" rel="noreferrer" title={candidate.linkedin}
+                  className="inline-flex items-center gap-1 text-[#0a66c2] hover:underline max-w-[260px] truncate">
+                  <Linkedin size={11} className="flex-shrink-0" />
+                  <span className="truncate">{candidate.linkedin.replace(/^https?:\/\/(www\.)?/, "")}</span>
+                </a>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-rose-700 bg-rose-50 border border-rose-200 rounded-full px-2 py-0.5">
+                  <Linkedin size={11} /> LinkedIn URL missing — verify during re-onboarding
+                </span>
+              )}
             </div>
           </div>
         </div>
