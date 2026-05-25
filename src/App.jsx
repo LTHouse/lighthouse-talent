@@ -923,102 +923,131 @@ function CompanyPortal({ user, logout }) {
 
 // ============================================================
 // HOME DASHBOARD — company + investor landing page
-// Modules: Sent to You for Review, Featured Talent of the Week, Recent Activity
+// Layout: banner + grid pattern. Three sections (Sent for Review row, Featured grid,
+// Quick Access dual-column), each with parity in section-header treatment + dividers.
 // ============================================================
 function HomeDashboard({ user, investor, reviewQueue, featuredWeeks, searches, shortlists, onOpenCandidate, onRespondReview, onRequestIntro, onGoSearch, onLoadSearch, onOpenShortlist }) {
-  const greeting = investor
-    ? `Welcome back, ${investor.name} — searching for Direct`
-    : `Welcome back, ${user.name || "team"}`;
-  const pending = reviewQueue.filter(r => r.status === "pending");
+  const subtitle = investor ? "Searching for Direct" : null;
+  const greetingName = investor ? investor.name : (user.name || "team");
+  const sortedQueue = [...reviewQueue].sort((a, b) => b.sent_at.localeCompare(a.sent_at));
   const currentWeek = getCurrentFeatured(featuredWeeks);
   const featuredCandidates = currentWeek ? currentWeek.candidate_ids.map(id => CANDIDATES.find(c => c.id === id)).filter(Boolean) : [];
+  const recentSearches = [...searches].slice(-3).reverse();
+  const recentShortlists = [...shortlists].slice(-3).reverse();
+  const totalSavedSearches = searches.length;
+  const totalShortlists = shortlists.length;
+
+  function SectionHeader({ children, count }) {
+    return (
+      <h2 className="font-display text-2xl mb-3 flex items-baseline gap-2">
+        {children}
+        {typeof count === "number" && <span className="text-stone-400 text-lg font-display">({count})</span>}
+      </h2>
+    );
+  }
 
   return (
-    <div className="space-y-10">
-      <div>
-        <h1 className="font-display text-4xl">{greeting}.</h1>
-        <p className="text-stone-500 text-sm mt-1">See what's curated for you, then search if you need more.</p>
+    <div>
+      {/* Welcome banner */}
+      <div className="mb-8">
+        <h1 className="font-display text-4xl leading-tight">Welcome back, {greetingName}.</h1>
+        {subtitle && <div className="text-stone-500 text-sm mt-1">{subtitle}</div>}
       </div>
 
-      {/* MODULE 1: Sent for Review */}
-      <section>
-        <h2 className="font-display text-2xl mb-3">Sent to you for review {pending.length > 0 && <span className="text-amber-600">({pending.length})</span>}</h2>
-        {reviewQueue.length === 0 ? (
-          <Card className="text-center py-10 text-sm text-stone-500">
-            <Mail size={28} className="text-stone-400 mx-auto mb-2" />
-            No candidates sent yet. When Zap has someone she wants you to meet, you'll see them here.
-          </Card>
+      {/* SECTION 1: Sent for Review — compact horizontal scroll */}
+      <section className="border-t border-stone-200 pt-8 pb-10">
+        <SectionHeader count={sortedQueue.length}>Sent to you for review</SectionHeader>
+        {sortedQueue.length === 0 ? (
+          <p className="text-sm text-stone-500">Nothing waiting for review. Zap will send candidates here when there's a fit.</p>
         ) : (
-          <div className="space-y-3">
-            {[...reviewQueue].sort((a, b) => b.sent_at.localeCompare(a.sent_at)).map(r => {
+          <div className="flex gap-3 overflow-x-auto pb-3 -mx-1 px-1 snap-x snap-mandatory">
+            {sortedQueue.map(r => {
               const c = CANDIDATES.find(c => c.id === r.candidate_id);
               if (!c) return null;
-              return <ReviewQueueCard key={r.id} review={r} candidate={c} onOpen={() => onOpenCandidate(c.id)} onRespond={(status, reason) => onRespondReview(r.id, status, reason)} onRequestIntro={() => onRequestIntro(c.id)} />;
+              return <ReviewQueueCard key={r.id} review={r} candidate={c}
+                onOpen={() => onOpenCandidate(c.id)}
+                onRespond={(status, reason) => onRespondReview(r.id, status, reason)}
+                onRequestIntro={() => onRequestIntro(c.id)} />;
             })}
           </div>
         )}
       </section>
 
-      {/* MODULE 2: Featured Talent of the Week */}
-      <section>
-        <h2 className="font-display text-2xl mb-1 flex items-center gap-2">Featured this week <Zap size={20} className="text-amber-500 fill-amber-500" /></h2>
+      {/* SECTION 2: Featured this week */}
+      <section className="border-t border-stone-200 pt-8 pb-10">
+        <SectionHeader>Featured this week <Zap size={18} className="text-amber-500 fill-amber-500 inline align-middle ml-1" /></SectionHeader>
         {currentWeek?.curator_note && (
-          <blockquote className="border-l-2 border-amber-400 pl-3 text-sm text-stone-700 italic mb-4">{currentWeek.curator_note}</blockquote>
+          <blockquote className="border-l-2 border-amber-400 pl-3 text-sm text-stone-700 italic mb-5">{currentWeek.curator_note}</blockquote>
         )}
         {featuredCandidates.length === 0 ? (
-          <Card className="text-center py-10 text-sm text-stone-500">
+          <p className="text-sm text-stone-500">
             No featured talent this week. <button onClick={onGoSearch} className="text-amber-600 hover:underline">Browse the full network →</button>
-          </Card>
+          </p>
         ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
             {featuredCandidates.map(c => <FeaturedCandidateCard key={c.id} candidate={c} onOpen={() => onOpenCandidate(c.id)} />)}
           </div>
         )}
       </section>
 
-      {/* MODULE 3: Recent Activity */}
-      <section>
-        <h2 className="font-display text-2xl mb-3">Quick access</h2>
-        <div className="grid md:grid-cols-2 gap-3">
-          <Card>
-            <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-2 flex items-center gap-1"><BookOpenCheck size={12} /> Recent searches</div>
-            {searches.length === 0 ? (
-              <div className="text-sm text-stone-500">No saved searches yet.</div>
-            ) : (
-              <div className="space-y-1.5">
-                {searches.slice(-3).reverse().map(s => (
-                  <button key={s.id} onClick={() => onLoadSearch(s)} className="w-full text-left flex items-center justify-between gap-2 text-sm p-2 rounded-lg hover:bg-stone-50">
-                    <span className="font-semibold truncate">{s.name}</span>
-                    <span className="text-xs text-stone-500 flex-shrink-0">Run →</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </Card>
-          <Card>
-            <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-2 flex items-center gap-1"><Star size={12} /> Recent shortlists</div>
-            {shortlists.length === 0 ? (
-              <div className="text-sm text-stone-500">No shortlists yet.</div>
-            ) : (
-              <div className="space-y-1.5">
-                {shortlists.slice(-3).reverse().map(s => (
-                  <button key={s.id} onClick={onOpenShortlist} className="w-full text-left flex items-center justify-between gap-2 text-sm p-2 rounded-lg hover:bg-stone-50">
-                    <span className="font-semibold truncate">{s.name}</span>
-                    <span className="text-xs text-stone-500 flex-shrink-0">{s.candidateIds.length}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </Card>
-        </div>
-        <div className="mt-3">
-          <Button variant="secondary" icon={Search} onClick={onGoSearch}>Continue searching →</Button>
-        </div>
+      {/* SECTION 3: Quick Access */}
+      <section className="border-t border-stone-200 pt-8 pb-4">
+        <SectionHeader>Quick Access</SectionHeader>
+        {totalSavedSearches === 0 && totalShortlists === 0 ? (
+          <p className="text-sm text-stone-500">Your recent searches and shortlists will appear here.</p>
+        ) : (
+          <div className="grid md:grid-cols-2 gap-3">
+            <Card padded={false} className="p-5">
+              <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-3 flex items-center gap-1.5"><BookOpenCheck size={12} /> Recent Searches</div>
+              {recentSearches.length === 0 ? (
+                <div className="text-sm text-stone-500 py-2">No saved searches yet.</div>
+              ) : (
+                <div className="divide-y divide-stone-100">
+                  {recentSearches.map(s => (
+                    <button key={s.id} onClick={() => onLoadSearch(s)} className="w-full text-left flex items-center justify-between gap-2 py-2.5 hover:text-amber-600 group">
+                      <div className="min-w-0 flex-1">
+                        <div className="font-semibold text-sm truncate">{s.name}</div>
+                        <div className="text-xs text-stone-500">{s.createdAt}{s.results !== undefined ? ` · ${s.results} results` : ""}</div>
+                      </div>
+                      <span className="text-xs font-bold text-stone-500 group-hover:text-amber-600 flex-shrink-0">Run →</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {totalSavedSearches > 3 && (
+                <button onClick={() => onLoadSearch(searches[searches.length - 1])} className="mt-3 text-xs font-bold text-stone-500 hover:text-amber-600">View all {totalSavedSearches} saved searches →</button>
+              )}
+            </Card>
+            <Card padded={false} className="p-5">
+              <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-3 flex items-center gap-1.5"><Star size={12} /> Recent Shortlists</div>
+              {recentShortlists.length === 0 ? (
+                <div className="text-sm text-stone-500 py-2">No shortlists yet.</div>
+              ) : (
+                <div className="divide-y divide-stone-100">
+                  {recentShortlists.map(s => (
+                    <button key={s.id} onClick={onOpenShortlist} className="w-full text-left flex items-center justify-between gap-2 py-2.5 hover:text-amber-600 group">
+                      <div className="min-w-0 flex-1">
+                        <div className="font-semibold text-sm truncate">{s.name}</div>
+                        <div className="text-xs text-stone-500">{s.candidateIds.length} candidates{s.createdAt ? ` · ${s.createdAt}` : ""}</div>
+                      </div>
+                      <span className="text-xs font-bold text-stone-500 group-hover:text-amber-600 flex-shrink-0">Open →</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {totalShortlists > 3 && (
+                <button onClick={onOpenShortlist} className="mt-3 text-xs font-bold text-stone-500 hover:text-amber-600">View all {totalShortlists} shortlists →</button>
+              )}
+            </Card>
+          </div>
+        )}
       </section>
     </div>
   );
 }
 
+// Compact review-queue card sized for horizontal scroll row (Sent for Review section).
+// Fixed width ~360px, ~150px tall. Inbox-item feel — not a content block.
 function ReviewQueueCard({ review, candidate, onOpen, onRespond, onRequestIntro }) {
   const [showPass, setShowPass] = useState(false);
   const [passReason, setPassReason] = useState("Not the right experience");
@@ -1026,50 +1055,43 @@ function ReviewQueueCard({ review, candidate, onOpen, onRespond, onRequestIntro 
   if (review.status !== "pending") {
     const statusLabel = { interested: "Interested", passed: "Passed", discussion_requested: "Discussion requested" }[review.status] || review.status;
     return (
-      <Card className="opacity-70">
-        <div className="flex items-center gap-3 flex-wrap">
-          <Avatar candidate={candidate} size={40} />
+      <Card padded={false} className="p-4 opacity-60 flex-shrink-0 w-[360px] snap-start">
+        <div className="flex items-center gap-2.5">
+          <Avatar candidate={candidate} size={32} />
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5"><span className="font-bold truncate">{candidate.firstName} {candidate.lastName}</span><VettedBadge candidate={candidate} size={12} /></div>
-            <div className="text-xs text-stone-500">{candidate.currentRole} · sent {review.sent_at}</div>
+            <div className="flex items-center gap-1.5"><span className="font-bold text-sm truncate">{candidate.firstName} {candidate.lastName}</span><VettedBadge candidate={candidate} size={11} /></div>
+            <div className="text-xs text-stone-500 truncate">{candidate.currentRole}</div>
           </div>
-          <Tag color={review.status === "interested" ? "green" : "default"}>{statusLabel}</Tag>
+          <Tag color={review.status === "interested" ? "green" : review.status === "passed" ? "red" : "default"} size="sm">{statusLabel}</Tag>
         </div>
       </Card>
     );
   }
   return (
-    <Card onClick={onOpen} className="hover:border-amber-400 transition cursor-pointer">
-      <div className="flex gap-4">
-        <Avatar candidate={candidate} size={48} />
+    <Card onClick={onOpen} padded={false} className="p-4 flex-shrink-0 w-[360px] snap-start hover:border-amber-400 transition cursor-pointer flex flex-col">
+      <div className="flex items-center gap-2.5">
+        <Avatar candidate={candidate} size={32} />
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5">
-            <span className="font-bold text-lg">{candidate.firstName} {candidate.lastName}</span>
-            <VettedBadge candidate={candidate} size={16} />
-          </div>
-          <div className="text-sm text-stone-500">{candidate.currentRole}{candidate.currentCompany && ` · ${candidate.currentCompany}`}</div>
-          <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-            <div className="text-[10px] uppercase tracking-wider text-amber-700 font-bold mb-1">Zap's note · {review.sent_at}</div>
-            <div className="text-sm text-stone-800">{review.zap_note}</div>
-          </div>
-          <div className="flex items-center gap-2 mt-3 flex-wrap" onClick={(e) => e.stopPropagation()}>
-            <Button size="sm" icon={Coffee} onClick={() => { onRespond("interested"); onRequestIntro(); }}>Interested · Request intro</Button>
-            <Button size="sm" variant="secondary" onClick={() => setShowPass(true)}>Pass</Button>
-            <Button size="sm" variant="ghost" icon={MessageSquare} onClick={() => onRespond("discussion_requested", "Want to discuss with Zap")}>Discuss with Zap</Button>
-          </div>
-          {showPass && (
-            <div className="mt-3 p-3 bg-stone-50 border border-stone-200 rounded-lg" onClick={(e) => e.stopPropagation()}>
-              <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-2">Why pass?</div>
-              <Select value={passReason} onChange={setPassReason} options={["Not the right experience", "Wrong fit for our stage", "We've already met", "Other"]} className="text-sm mb-2" />
-              {passReason === "Other" && <Textarea rows={2} value={passNote} onChange={e => setPassNote(e.target.value)} placeholder="Explain..." className="text-sm mb-2" />}
-              <div className="flex gap-2 justify-end">
-                <Button size="sm" variant="ghost" onClick={() => setShowPass(false)}>Cancel</Button>
-                <Button size="sm" onClick={() => { onRespond("passed", passReason === "Other" ? passNote : passReason); setShowPass(false); }}>Submit pass</Button>
-              </div>
-            </div>
-          )}
+          <div className="flex items-center gap-1.5"><span className="font-bold text-sm truncate">{candidate.firstName} {candidate.lastName}</span><VettedBadge candidate={candidate} size={11} /></div>
+          <div className="text-xs text-stone-500 truncate">{candidate.currentRole}{candidate.currentCompany && ` · ${candidate.currentCompany}`}</div>
         </div>
       </div>
+      <blockquote className="border-l-2 border-amber-300 pl-2.5 mt-2.5 text-xs text-stone-700 italic line-clamp-2">"{review.zap_note}"</blockquote>
+      <div className="flex items-center gap-2 mt-3 flex-wrap" onClick={(e) => e.stopPropagation()}>
+        <Button size="sm" icon={Coffee} onClick={() => { onRespond("interested"); onRequestIntro(); }}>Interested</Button>
+        <button onClick={() => setShowPass(true)} className="px-2.5 py-1.5 text-xs rounded-lg border border-stone-300 text-stone-700 hover:border-stone-400 font-semibold">Pass</button>
+        <button onClick={() => onRespond("discussion_requested", "Want to discuss with Zap")} className="text-xs text-stone-500 hover:text-amber-600 inline-flex items-center gap-1"><MessageSquare size={11} /> Discuss</button>
+      </div>
+      {showPass && (
+        <div className="mt-2.5 p-2.5 bg-stone-50 border border-stone-200 rounded-lg" onClick={(e) => e.stopPropagation()}>
+          <Select value={passReason} onChange={setPassReason} options={["Not the right experience", "Wrong fit for our stage", "We've already met", "Other"]} className="text-xs mb-2" />
+          {passReason === "Other" && <Textarea rows={2} value={passNote} onChange={e => setPassNote(e.target.value)} placeholder="Explain..." className="text-xs mb-2" />}
+          <div className="flex gap-1.5 justify-end">
+            <button onClick={() => setShowPass(false)} className="text-xs text-stone-500 px-2 py-1">Cancel</button>
+            <Button size="sm" onClick={() => { onRespond("passed", passReason === "Other" ? passNote : passReason); setShowPass(false); }}>Submit</Button>
+          </div>
+        </div>
+      )}
     </Card>
   );
 }
