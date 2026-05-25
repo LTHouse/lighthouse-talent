@@ -96,6 +96,19 @@ const RELOCATION_OPTIONS = [
 
 const WORK_MODES = ["In-person Nashville", "Hybrid", "Remote", "Open"];
 
+// Display-only lookup for the existing mock-data topMotivation field.
+// New applicants don't fill this in (motivations were dropped from intake),
+// so the chip renders only when a candidate has a known motivation.
+const MOTIVATION_SHORT = {
+  "I want to own something — equity, decisions, outcomes.": "Wants ownership",
+  "I want to learn faster than I would anywhere else.": "Wants to learn faster",
+  "I want to find a startup where I care deeply about the specific problem being solved.": "Mission-driven",
+  "I want to build something from scratch, not maintain what already exists.": "Wants to build 0→1",
+  "I'm bored at big company life and I'm finally doing something about it.": "Escaping big-co",
+  "I want the financial upside if the company wins big.": "Upside-driven",
+  "I just need a job.": "Just needs a job",
+};
+
 // Lightweight browser-history shim — when `active` becomes truthy we push a state entry, and
 // any subsequent popstate (browser back / swipe-back) calls onBack to reverse the navigation
 // inside the SPA instead of leaving the site. Used at every key sub-view transition.
@@ -214,6 +227,17 @@ function Avatar({ candidate, size = 40 }) {
   const initials = ((candidate.firstName?.[0] || "") + (candidate.lastName?.[0] || "")).toUpperCase();
   const [bg, fg] = AVATAR_COLORS[(candidate.photoSeed || 0) % AVATAR_COLORS.length];
   return <div style={{ width: size, height: size, background: bg, color: fg, fontSize: size * 0.38 }} className="rounded-full flex items-center justify-center font-bold flex-shrink-0">{initials}</div>;
+}
+
+// "Open to relocate" chip — high-signal flag for Nashville-based hires.
+// Soft amber pill, comparable weight to the ⚡ bolt. Hidden when not applicable.
+function RelocateBadge({ candidate }) {
+  if (candidate?.relocationStatus !== "willing_to_relocate") return null;
+  return (
+    <span className="inline-flex items-center gap-1 bg-amber-50 border border-amber-200 text-amber-800 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider whitespace-nowrap align-middle">
+      <MapPin size={9} className="flex-shrink-0" /> Open to relocate
+    </span>
+  );
 }
 
 // ⚡ Vetted-in-person badge. The core trust signal of Lighthouse — Zap has met this person.
@@ -876,6 +900,7 @@ function CompanyPortal({ user, logout }) {
               <HomeDashboard
                 user={user}
                 investor={investor}
+                portcoTag={portcoTag}
                 reviewQueue={myReviewQueue}
                 featuredWeeks={featuredWeeks}
                 searches={searches}
@@ -926,8 +951,8 @@ function CompanyPortal({ user, logout }) {
 // Layout: banner + grid pattern. Three sections (Sent for Review row, Featured grid,
 // Quick Access dual-column), each with parity in section-header treatment + dividers.
 // ============================================================
-function HomeDashboard({ user, investor, reviewQueue, featuredWeeks, searches, shortlists, onOpenCandidate, onRespondReview, onRequestIntro, onGoSearch, onLoadSearch, onOpenShortlist }) {
-  const subtitle = investor ? "Searching for Direct" : null;
+function HomeDashboard({ user, investor, portcoTag, reviewQueue, featuredWeeks, searches, shortlists, onOpenCandidate, onRespondReview, onRequestIntro, onGoSearch, onLoadSearch, onOpenShortlist }) {
+  const investorSubtitle = investor ? (portcoTag ? `Searching for ${portcoTag}` : "Searching directly") : null;
   const greetingName = investor ? investor.name : (user.name || "team");
   const sortedQueue = [...reviewQueue].sort((a, b) => b.sent_at.localeCompare(a.sent_at));
   const currentWeek = getCurrentFeatured(featuredWeeks);
@@ -936,6 +961,16 @@ function HomeDashboard({ user, investor, reviewQueue, featuredWeeks, searches, s
   const recentShortlists = [...shortlists].slice(-3).reverse();
   const totalSavedSearches = searches.length;
   const totalShortlists = shortlists.length;
+  // Count-adaptive grid for the Featured row: 3 → 3 cols, 4 → 4 cols, 5 → 5 cols.
+  // Mobile (<sm) falls back to horizontal scroll so the lineup never wraps awkwardly.
+  const featuredCount = featuredCandidates.length;
+  const featuredColsClass = ({
+    1: "sm:grid-cols-1",
+    2: "sm:grid-cols-2",
+    3: "sm:grid-cols-2 lg:grid-cols-3",
+    4: "sm:grid-cols-2 lg:grid-cols-4",
+    5: "sm:grid-cols-2 lg:grid-cols-5",
+  })[Math.min(featuredCount, 5)] || "sm:grid-cols-2 lg:grid-cols-5";
 
   function SectionHeader({ children, count }) {
     return (
@@ -951,10 +986,38 @@ function HomeDashboard({ user, investor, reviewQueue, featuredWeeks, searches, s
       {/* Welcome banner */}
       <div className="mb-8">
         <h1 className="font-display text-4xl leading-tight">Welcome back, {greetingName}.</h1>
-        {subtitle && <div className="text-stone-500 text-sm mt-1">{subtitle}</div>}
+        {investorSubtitle && <div className="text-stone-500 text-sm mt-1">{investorSubtitle}</div>}
       </div>
 
-      {/* SECTION 1: Sent for Review — compact horizontal scroll */}
+      {/* SECTION 1: Featured this week — leads the page (editorial first) */}
+      <section className="border-t border-stone-200 pt-8 pb-10">
+        <SectionHeader>Featured this week <Zap size={18} className="text-amber-500 fill-amber-500 inline align-middle ml-1" /></SectionHeader>
+        {currentWeek?.curator_note && (
+          <blockquote className="border-l-4 border-amber-400 pl-4 py-1 text-base text-stone-700 italic mb-5 max-w-3xl">{currentWeek.curator_note}</blockquote>
+        )}
+        {featuredCandidates.length === 0 ? (
+          <p className="text-sm text-stone-500">
+            No featured talent this week. <button onClick={onGoSearch} className="text-amber-600 hover:underline">Browse the full network →</button>
+          </p>
+        ) : (
+          <>
+            {/* Mobile: horizontal scroll (peek next card) */}
+            <div className={`sm:hidden flex gap-3 overflow-x-auto pb-3 -mx-1 px-1 snap-x snap-mandatory`}>
+              {featuredCandidates.map(c => (
+                <div key={c.id} className="snap-start flex-shrink-0 w-[75vw] max-w-[320px]">
+                  <FeaturedCandidateCard candidate={c} onOpen={() => onOpenCandidate(c.id)} />
+                </div>
+              ))}
+            </div>
+            {/* Desktop: single-row count-adaptive lineup */}
+            <div className={`hidden sm:grid ${featuredColsClass} gap-3`}>
+              {featuredCandidates.map(c => <FeaturedCandidateCard key={c.id} candidate={c} onOpen={() => onOpenCandidate(c.id)} />)}
+            </div>
+          </>
+        )}
+      </section>
+
+      {/* SECTION 2: Sent for Review — moved below Featured */}
       <section className="border-t border-stone-200 pt-8 pb-10">
         <SectionHeader count={sortedQueue.length}>Sent to you for review</SectionHeader>
         {sortedQueue.length === 0 ? (
@@ -969,23 +1032,6 @@ function HomeDashboard({ user, investor, reviewQueue, featuredWeeks, searches, s
                 onRespond={(status, reason) => onRespondReview(r.id, status, reason)}
                 onRequestIntro={() => onRequestIntro(c.id)} />;
             })}
-          </div>
-        )}
-      </section>
-
-      {/* SECTION 2: Featured this week */}
-      <section className="border-t border-stone-200 pt-8 pb-10">
-        <SectionHeader>Featured this week <Zap size={18} className="text-amber-500 fill-amber-500 inline align-middle ml-1" /></SectionHeader>
-        {currentWeek?.curator_note && (
-          <blockquote className="border-l-2 border-amber-400 pl-3 text-sm text-stone-700 italic mb-5">{currentWeek.curator_note}</blockquote>
-        )}
-        {featuredCandidates.length === 0 ? (
-          <p className="text-sm text-stone-500">
-            No featured talent this week. <button onClick={onGoSearch} className="text-amber-600 hover:underline">Browse the full network →</button>
-          </p>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-            {featuredCandidates.map(c => <FeaturedCandidateCard key={c.id} candidate={c} onOpen={() => onOpenCandidate(c.id)} />)}
           </div>
         )}
       </section>
@@ -1072,7 +1118,7 @@ function ReviewQueueCard({ review, candidate, onOpen, onRespond, onRequestIntro 
       <div className="flex items-center gap-2.5">
         <Avatar candidate={candidate} size={32} />
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5"><span className="font-bold text-sm truncate">{candidate.firstName} {candidate.lastName}</span><VettedBadge candidate={candidate} size={11} /></div>
+          <div className="flex items-center gap-1.5 flex-wrap"><span className="font-bold text-sm truncate">{candidate.firstName} {candidate.lastName}</span><VettedBadge candidate={candidate} size={11} /><RelocateBadge candidate={candidate} /></div>
           <div className="text-xs text-stone-500 truncate">{candidate.currentRole}{candidate.currentCompany && ` · ${candidate.currentCompany}`}</div>
         </div>
       </div>
@@ -1097,26 +1143,30 @@ function ReviewQueueCard({ review, candidate, onOpen, onRespond, onRequestIntro 
 }
 
 function FeaturedCandidateCard({ candidate, onOpen }) {
-  const locDisplay = candidate.relocationStatus === "in_tn" ? candidate.currentLocation
-    : candidate.relocationStatus === "willing_to_relocate" ? `${candidate.currentLocation} — willing to relocate`
-    : `${candidate.currentLocation} — remote`;
+  const motivationShort = candidate.topMotivation ? MOTIVATION_SHORT[candidate.topMotivation] : null;
   return (
-    <Card onClick={onOpen} className="hover:border-amber-400 transition cursor-pointer">
+    <Card onClick={onOpen} className="hover:border-amber-400 transition cursor-pointer flex flex-col h-full">
       <div className="flex items-start gap-3">
-        <Avatar candidate={candidate} size={44} />
+        <Avatar candidate={candidate} size={48} />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 min-w-0">
             <span className="font-bold truncate">{candidate.firstName} {candidate.lastName}</span>
             <VettedBadge candidate={candidate} size={14} />
           </div>
           <div className="text-sm text-stone-500 truncate">{candidate.currentRole}{candidate.currentCompany && ` · ${candidate.currentCompany}`}</div>
-          <div className="text-xs text-stone-500 mt-1.5 flex flex-wrap gap-2">
+          {motivationShort && (
+            <div className="mt-1.5">
+              <span className="inline-block bg-yellow-50 border border-yellow-200 text-amber-800 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider">{motivationShort}</span>
+            </div>
+          )}
+          <div className="text-xs text-stone-500 mt-2 flex flex-wrap items-center gap-2">
             <span><Clock size={10} className="inline mr-0.5" /> {candidate.yearsExperience} yrs</span>
-            <span><MapPin size={10} className="inline mr-0.5" /> {locDisplay}</span>
+            <span className="truncate"><MapPin size={10} className="inline mr-0.5" /> {candidate.currentLocation}</span>
+            <RelocateBadge candidate={candidate} />
           </div>
         </div>
       </div>
-      <button onClick={(e) => { e.stopPropagation(); onOpen(); }} className="mt-3 w-full text-center text-xs font-bold text-amber-600 hover:text-amber-700 py-2 border-t border-stone-100">View profile →</button>
+      <button onClick={(e) => { e.stopPropagation(); onOpen(); }} className="mt-auto pt-3 w-full text-center text-xs font-bold text-amber-600 hover:text-amber-700 border-t border-stone-100">View profile →</button>
     </Card>
   );
 }
@@ -1281,9 +1331,9 @@ function FilterSidebar({ filters, setFilters, onApply }) {
 
 function CandidateCardMVP({ candidate, onOpen, onRequestIntro, onAddToShortlist, shortlists }) {
   const [showShort, setShowShort] = useState(false);
-  const locDisplay = candidate.relocationStatus === "in_tn" ? candidate.currentLocation
-    : candidate.relocationStatus === "willing_to_relocate" ? `${candidate.currentLocation} — willing to relocate`
-    : `${candidate.currentLocation} — remote only`;
+  const locDisplay = candidate.relocationStatus === "remote_only"
+    ? `${candidate.currentLocation} — remote only`
+    : candidate.currentLocation;
   // Whole card is clickable. Inner buttons stop propagation so they don't also open the profile.
   const stop = (fn) => (e) => { e.stopPropagation(); if (fn) fn(); };
   return (
@@ -1302,6 +1352,7 @@ function CandidateCardMVP({ candidate, onOpen, onRequestIntro, onAddToShortlist,
             <span><Clock size={11} className="inline mr-0.5" /> {candidate.yearsExperience} yrs</span>
             <span><MapPin size={11} className="inline mr-0.5" /> {locDisplay}</span>
             <span><Briefcase size={11} className="inline mr-0.5" /> {candidate.workMode}</span>
+            <RelocateBadge candidate={candidate} />
           </div>
           <div className="flex items-center gap-2 mt-3 flex-wrap" onClick={(e) => e.stopPropagation()}>
             <Button size="sm" icon={Coffee} onClick={stop(onRequestIntro)}>Request Intro</Button>
@@ -1327,9 +1378,9 @@ function CandidateCardMVP({ candidate, onOpen, onRequestIntro, onAddToShortlist,
 }
 
 function CandidateProfile({ candidate, onBack, onRequestIntro }) {
-  const locDisplay = candidate.relocationStatus === "in_tn" ? candidate.currentLocation
-    : candidate.relocationStatus === "willing_to_relocate" ? `${candidate.currentLocation} — willing to relocate to Nashville`
-    : `${candidate.currentLocation} — remote only`;
+  const locDisplay = candidate.relocationStatus === "remote_only"
+    ? `${candidate.currentLocation} — remote only`
+    : candidate.currentLocation;
   return (
     <div className="space-y-4 max-w-4xl mx-auto">
       <Button variant="ghost" icon={ArrowLeft} size="sm" onClick={onBack}>Back to results</Button>
@@ -1340,6 +1391,7 @@ function CandidateProfile({ candidate, onBack, onRequestIntro }) {
             <div className="flex items-center gap-2 flex-wrap">
               <div className="text-3xl font-display">{candidate.firstName} {candidate.lastName}</div>
               <VettedBadge candidate={candidate} size={22} />
+              <RelocateBadge candidate={candidate} />
             </div>
             <div className="text-stone-500">{candidate.currentRole}{candidate.currentCompany && ` · ${candidate.currentCompany}`}</div>
             <div className="flex gap-3 mt-2 text-xs text-stone-500 flex-wrap">
