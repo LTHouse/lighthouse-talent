@@ -1,34 +1,41 @@
 // LinkedIn enrichment seam.
 //
-// PRODUCTION: this will call a Supabase Edge Function that wraps Proxycurl's
-// Person Profile endpoint (https://nubela.co/proxycurl/docs#people-api-person-profile-endpoint),
-// then write the response into candidates.linkedin_data along with a timestamp.
+// HISTORY: Earlier specs recommended Proxycurl as the enrichment vendor.
+// Proxycurl shut down in July 2025 after losing a federal lawsuit to LinkedIn/Microsoft
+// and was required to delete all customer data. The broader third-party enrichment
+// market is now in a more legally exposed position.
 //
-// DEVELOPMENT (current): returns a deterministic mock payload shaped like the
-// Proxycurl response so the UI can be wired and verified before credentials land.
+// MVP DECISION (current): no third-party enrichment. Use Sign In with LinkedIn for
+// identity verification only (name, email, photo, public profile URL, LinkedIn ID).
+// Role + company are candidate-self-reported. The vetted bolt (set by Zap during the
+// in-person vetting call) is the source of professional verification.
 //
-// Lorenzo's prereqs before flipping to real Proxycurl:
-//   1. Sign up at https://nubela.co/proxycurl and get an API key
-//   2. Register a LinkedIn Developer App for The Lighthouse (OAuth)
-//   3. Store both as Supabase secrets (PROXYCURL_API_KEY, LINKEDIN_OAUTH_*)
-//   4. Deploy the matching Edge Function (sketch below in the comment block)
+// This file remains as the seam where enrichment will plug in IF/WHEN the vendor
+// market settles, or once Lighthouse scales to a LinkedIn Talent Solutions partnership.
+// Until then, `enrichFromLinkedIn` returns a deterministic mock payload so the existing
+// admin freshness UI keeps working for the "spot enrich" demo flow.
 //
-// Migration to apply when wiring real persistence:
-//   alter table candidates add column linkedin_data jsonb;
-//   alter table candidates add column linkedin_data_last_updated timestamptz;
-//   alter table candidates add column linkedin_data_source text;
-//   alter table candidates add column linkedin_refresh_priority text default 'normal';
+// Lorenzo's prereqs for go-live (no third-party enrichment, only OAuth):
+//   1. Register a LinkedIn Developer App for The Lighthouse:
+//      - https://developer.linkedin.com
+//      - Add the "Sign In with LinkedIn using OpenID Connect" product
+//      - Get Client ID + Client Secret
+//   2. Store as Supabase secrets: LINKEDIN_CLIENT_ID, LINKEDIN_CLIENT_SECRET
+//   3. Apply the migration:
+//      alter table candidates add column linkedin_verified boolean default false;
+//      alter table candidates add column linkedin_id text;
+//      alter table candidates add column intake_source text default 'Manual entry';
+//      alter table candidates add column linkedin_data jsonb;              -- reserved for future
+//      alter table candidates add column linkedin_data_last_updated timestamptz;  -- reserved
+//      alter table candidates add column linkedin_data_source text;        -- reserved
+//      alter table candidates add column linkedin_refresh_priority text default 'normal';
+//   4. Update the placement agreement to include the 12-month attribution clause
+//      (work with Frost Brown Todd — small amendment to existing template).
 //
-// Edge Function sketch (supabase/functions/enrich-linkedin/index.ts):
-//   const res = await fetch(`https://nubela.co/proxycurl/api/v2/linkedin?url=${url}`, {
-//     headers: { Authorization: `Bearer ${Deno.env.get("PROXYCURL_API_KEY")}` },
-//   });
-//   const payload = await res.json();
-//   await supabase.from("candidates").update({
-//     linkedin_data: payload,
-//     linkedin_data_last_updated: new Date().toISOString(),
-//     linkedin_data_source: "proxycurl",
-//   }).eq("id", candidateId);
+// Anti-poaching layers wired into the UI:
+//   - LinkedIn URL hidden on all company-facing surfaces (visible to admin only)
+//   - window.__lt_profile_views logs every company-side candidate detail view
+//   - 12-month attribution clause is contractual (Lorenzo's task, not Cowork's)
 
 const MOCK_COMPANIES = ["Stripe", "Notion", "Airtable", "Shopify", "Linear", "Vercel", "Ramp", "Brex"];
 const MOCK_SCHOOLS = ["Vanderbilt University", "Belmont University", "MTSU", "University of Tennessee"];
@@ -40,17 +47,18 @@ function _hash(str) {
   return Math.abs(h);
 }
 
-// Mock implementation — deterministic per LinkedIn URL so the same handle always
-// "enriches" to the same payload. Replace with the real Edge Function call when ready.
+// Returns a Proxycurl-shaped mock so the admin "Refresh now" button has something
+// to render. Once a real enrichment vendor is chosen, swap the body for the live
+// API call — the consumers expect the same shape.
 export async function enrichFromLinkedIn(linkedinUrl) {
   await new Promise(r => setTimeout(r, 800)); // simulate network
   const h = _hash(linkedinUrl || "demo");
   const stints = 2 + (h % 3); // 2-4 roles
   const baseYear = 2026 - 2 * stints;
   return {
-    source: "proxycurl-mock",
+    source: "mock-no-vendor", // intentional — Proxycurl is gone, no live source yet
     public_identifier: (linkedinUrl.match(/in\/([^/]+)/)?.[1]) || "demo-user",
-    full_name: null, // intentionally null; real Proxycurl returns this and the UI uses our captured name
+    full_name: null,
     headline: "Senior Operator",
     occupation: "Building things at startups",
     summary: "Operator focused on early-stage product and growth. Currently exploring what's next.",
@@ -72,7 +80,9 @@ export async function enrichFromLinkedIn(linkedinUrl) {
   };
 }
 
-// Refresh-cadence helpers — staleness checks for admin UI + the (disabled-until-go-live) cron job.
+// Staleness helper — still useful in admin UI for "high-priority candidates" annotation
+// even though no enrichment vendor is active. When a vendor lands, the scheduled job
+// uses this to decide which rows to refresh.
 export const REFRESH_PRIORITY_DAYS = { high: 7, normal: 60, frozen: Infinity };
 
 export function isStale(lastUpdatedISO, priority = "normal") {
