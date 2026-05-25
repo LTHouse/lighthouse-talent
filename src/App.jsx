@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { CANDIDATES as RAW_CANDIDATES, COMPANIES, INVESTORS, SAVED_SEARCHES, SHORTLISTS, RESOURCES, INITIAL_INTRO_REQUESTS, DEMO_TALENT_CANDIDATE_ID } from "./data.js";
 import { AuthProvider, useAuth, LoginScreen } from "./auth.jsx";
+import { enrichFromLinkedIn, isStale } from "./lib/linkedinEnrich.js";
 
 // ============================================================
 // ADDENDUM ENRICHMENT — vetted_in_person + computed featured flag
@@ -36,6 +37,12 @@ const CANDIDATES = RAW_CANDIDATES.map(c => {
     vetted_in_person: vetted,
     vetted_at: vetted ? _seededVettedDate(c.id) : null,
     vetted_by: vetted ? "Zap" : null,
+    // LinkedIn enrichment fields — seed candidates are NOT bulk-enriched per spec.
+    // Admin can spot-enrich individual candidates via the "Refresh now" button.
+    linkedin_data: null,
+    linkedin_data_last_updated: null,
+    linkedin_data_source: null,
+    linkedin_refresh_priority: "normal", // normal | high | frozen
   };
 });
 
@@ -230,12 +237,12 @@ function Avatar({ candidate, size = 40 }) {
 }
 
 // "Open to relocate" chip — high-signal flag for Nashville-based hires.
-// Soft amber pill, comparable weight to the ⚡ bolt. Hidden when not applicable.
+// Soft secondary visual weight — quieter than the ⚡ bolt.
 function RelocateBadge({ candidate }) {
   if (candidate?.relocationStatus !== "willing_to_relocate") return null;
   return (
-    <span className="inline-flex items-center gap-1 bg-amber-50 border border-amber-200 text-amber-800 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider whitespace-nowrap align-middle">
-      <MapPin size={9} className="flex-shrink-0" /> Open to relocate
+    <span className="inline-flex items-center gap-1 bg-amber-50/60 border border-amber-200/60 text-amber-800 rounded-full px-2 py-0.5 text-[11px] whitespace-nowrap align-middle">
+      <MapPin size={10} className="flex-shrink-0" /> Open to relocate
     </span>
   );
 }
@@ -474,7 +481,20 @@ function TalentIntakeFlow({ user, logout }) {
       </div>
       <div className="max-w-3xl mx-auto px-6 py-10">
         {step === 1 && <TalentLinkedIn profile={profile} update={update} onNext={next} onBack={back} />}
-        {step === 2 && <TalentBasics profile={profile} update={update} onSubmit={() => setStep(3)} onBack={back} />}
+        {step === 2 && <TalentBasics profile={profile} update={update} onSubmit={async () => {
+          setStep(3);
+          // Fire-and-forget enrichment so the candidate record (in a real backend)
+          // would have LinkedIn data ready by the time Zap reviews it. Mock today.
+          try {
+            const payload = await enrichFromLinkedIn(profile.linkedin);
+            update({
+              linkedin_data: payload,
+              linkedin_data_last_updated: new Date().toISOString(),
+              linkedin_data_source: payload.source,
+              linkedin_refresh_priority: "normal",
+            });
+          } catch (e) { /* mock cannot fail; real path will surface errors via admin UI */ }
+        }} onBack={back} />}
         {step === 3 && <TalentConfirmation profile={profile} onExit={logout} />}
       </div>
     </div>
@@ -961,16 +981,9 @@ function HomeDashboard({ user, investor, portcoTag, reviewQueue, featuredWeeks, 
   const recentShortlists = [...shortlists].slice(-3).reverse();
   const totalSavedSearches = searches.length;
   const totalShortlists = shortlists.length;
-  // Count-adaptive grid for the Featured row: 3 → 3 cols, 4 → 4 cols, 5 → 5 cols.
-  // Mobile (<sm) falls back to horizontal scroll so the lineup never wraps awkwardly.
+  // Featured grid: cap at 3 cols/row. 4 → 3+1, 5 → 3+2, 6 → 3+3. Cards keep consistent width
+  // across rows (wrapped cards left-align and don't stretch). Mobile = single-column stack.
   const featuredCount = featuredCandidates.length;
-  const featuredColsClass = ({
-    1: "sm:grid-cols-1",
-    2: "sm:grid-cols-2",
-    3: "sm:grid-cols-2 lg:grid-cols-3",
-    4: "sm:grid-cols-2 lg:grid-cols-4",
-    5: "sm:grid-cols-2 lg:grid-cols-5",
-  })[Math.min(featuredCount, 5)] || "sm:grid-cols-2 lg:grid-cols-5";
 
   function SectionHeader({ children, count }) {
     return (
@@ -995,25 +1008,14 @@ function HomeDashboard({ user, investor, portcoTag, reviewQueue, featuredWeeks, 
         {currentWeek?.curator_note && (
           <blockquote className="border-l-4 border-amber-400 pl-4 py-1 text-base text-stone-700 italic mb-5 max-w-3xl">{currentWeek.curator_note}</blockquote>
         )}
-        {featuredCandidates.length === 0 ? (
+        {featuredCount === 0 ? (
           <p className="text-sm text-stone-500">
             No featured talent this week. <button onClick={onGoSearch} className="text-amber-600 hover:underline">Browse the full network →</button>
           </p>
         ) : (
-          <>
-            {/* Mobile: horizontal scroll (peek next card) */}
-            <div className={`sm:hidden flex gap-3 overflow-x-auto pb-3 -mx-1 px-1 snap-x snap-mandatory`}>
-              {featuredCandidates.map(c => (
-                <div key={c.id} className="snap-start flex-shrink-0 w-[75vw] max-w-[320px]">
-                  <FeaturedCandidateCard candidate={c} onOpen={() => onOpenCandidate(c.id)} />
-                </div>
-              ))}
-            </div>
-            {/* Desktop: single-row count-adaptive lineup */}
-            <div className={`hidden sm:grid ${featuredColsClass} gap-3`}>
-              {featuredCandidates.map(c => <FeaturedCandidateCard key={c.id} candidate={c} onOpen={() => onOpenCandidate(c.id)} />)}
-            </div>
-          </>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 items-stretch">
+            {featuredCandidates.map(c => <FeaturedCandidateCard key={c.id} candidate={c} onOpen={() => onOpenCandidate(c.id)} />)}
+          </div>
         )}
       </section>
 
@@ -1156,7 +1158,7 @@ function FeaturedCandidateCard({ candidate, onOpen }) {
           <div className="text-sm text-stone-500 truncate">{candidate.currentRole}{candidate.currentCompany && ` · ${candidate.currentCompany}`}</div>
           {motivationShort && (
             <div className="mt-1.5">
-              <span className="inline-block bg-yellow-50 border border-yellow-200 text-amber-800 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider">{motivationShort}</span>
+              <span className="inline-block bg-yellow-50/60 border border-yellow-200/60 text-amber-800 rounded-full px-2 py-0.5 text-[11px]">{motivationShort}</span>
             </div>
           )}
           <div className="text-xs text-stone-500 mt-2 flex flex-wrap items-center gap-2">
@@ -1407,22 +1409,42 @@ function CandidateProfile({ candidate, onBack, onRequestIntro }) {
       <div className="grid md:grid-cols-3 gap-4">
         <div className="md:col-span-2 space-y-4">
           <Card>
-            <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-3">Background</div>
+            <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-3 flex items-center justify-between">
+              <span>Background</span>
+              {candidate.linkedin_data && <span className="inline-flex items-center gap-1 text-[10px] text-amber-700 normal-case font-normal tracking-normal"><Linkedin size={10} /> Live LinkedIn data</span>}
+            </div>
             <div className="font-bold mb-2 text-sm">Work history</div>
             <div className="space-y-2 mb-4">
-              {candidate.workHistory.map((w, i) => (
-                <div key={i} className="border-l-2 border-stone-200 pl-3">
-                  <div className="font-semibold text-sm">{w.title}</div>
-                  <div className="text-stone-500 text-xs">{w.company} · {w.startYear}–{w.endYear}</div>
-                </div>
-              ))}
+              {(candidate.linkedin_data?.experiences || candidate.workHistory).map((w, i) => {
+                // Normalize shape — Proxycurl uses `experiences` with starts_at/ends_at, our seed uses workHistory.
+                const title = w.title;
+                const company = w.company;
+                const start = w.starts_at?.year || w.startYear;
+                const end = w.ends_at?.year || w.endYear || (w.starts_at && !w.ends_at ? "Present" : null);
+                return (
+                  <div key={i} className="border-l-2 border-stone-200 pl-3">
+                    <div className="font-semibold text-sm">{title}</div>
+                    <div className="text-stone-500 text-xs">{company}{start ? ` · ${start}${end && end !== start ? `–${end}` : ""}` : ""}</div>
+                  </div>
+                );
+              })}
             </div>
             <div className="font-bold mb-2 text-sm">Education</div>
             <div className="space-y-1">
-              {candidate.education.map((e, i) => (
-                <div key={i} className="text-stone-700 text-sm"><span className="font-semibold">{e.school}</span> · {e.degree} · {e.year}</div>
+              {(candidate.linkedin_data?.education || candidate.education).map((e, i) => (
+                <div key={i} className="text-stone-700 text-sm"><span className="font-semibold">{e.school}</span> · {e.degree}{e.field ? ` · ${e.field}` : ""} · {e.year}</div>
               ))}
             </div>
+            {candidate.linkedin_data?.skills?.length > 0 && (
+              <>
+                <div className="font-bold mb-2 text-sm mt-4">Skills</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {candidate.linkedin_data.skills.map(s => (
+                    <span key={s} className="inline-block bg-stone-100 text-stone-700 rounded-full px-2 py-0.5 text-[11px]">{s}</span>
+                  ))}
+                </div>
+              </>
+            )}
           </Card>
           <Card>
             <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-3">Experience</div>
@@ -1896,7 +1918,20 @@ function AdminCandidateProfile({ candidate, updateCandidate, onBack, sendForRevi
   const [notes, setNotes] = useState(candidate.adminNotes || "");
   const [vetting, setVetting] = useState(candidate.vettingStatus);
   const [showSendModal, setShowSendModal] = useState(false);
+  const [enriching, setEnriching] = useState(false);
   function save() { updateCandidate(candidate.id, { adminNotes: notes, vettingStatus: vetting }); alert("Saved."); }
+  async function enrichNow() {
+    setEnriching(true);
+    try {
+      const payload = await enrichFromLinkedIn(candidate.linkedin || "https://www.linkedin.com/in/demo-user/");
+      updateCandidate(candidate.id, {
+        linkedin_data: payload,
+        linkedin_data_last_updated: new Date().toISOString(),
+        linkedin_data_source: payload.source,
+      });
+    } finally { setEnriching(false); }
+  }
+  function setRefreshPriority(p) { updateCandidate(candidate.id, { linkedin_refresh_priority: p }); }
   function toggleVetted() {
     if (candidate.vetted_in_person) {
       updateCandidate(candidate.id, { vetted_in_person: false, vetted_at: null, vetted_by: null });
@@ -1966,6 +2001,31 @@ function AdminCandidateProfile({ candidate, updateCandidate, onBack, sendForRevi
                 aria-label="Toggle vetted in person">
                 <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition ${candidate.vetted_in_person ? "left-[22px]" : "left-0.5"}`} />
               </button>
+            </div>
+          </Card>
+          <Card>
+            <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-2 flex items-center gap-1"><Linkedin size={12} /> LinkedIn data</div>
+            {candidate.linkedin_data ? (
+              <div className="text-[11px] text-stone-600 mb-2">
+                Last updated {candidate.linkedin_data_last_updated ? new Date(candidate.linkedin_data_last_updated).toLocaleDateString() : "—"}
+                {candidate.linkedin_data_source && <> · via {candidate.linkedin_data_source}</>}
+                {isStale(candidate.linkedin_data_last_updated, candidate.linkedin_refresh_priority) && (
+                  <span className="ml-1 inline-block px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 font-bold">stale</span>
+                )}
+              </div>
+            ) : (
+              <div className="text-[11px] text-stone-500 mb-2 italic">LinkedIn data not yet enriched.</div>
+            )}
+            <div className="space-y-1.5">
+              <Button size="sm" variant="secondary" icon={RefreshCw} onClick={enrichNow} disabled={enriching} className="w-full">
+                {enriching ? "Enriching..." : candidate.linkedin_data ? "Refresh now" : "Enrich now"}
+              </Button>
+              <Select value={candidate.linkedin_refresh_priority || "normal"} onChange={setRefreshPriority}
+                options={[
+                  { value: "normal", label: "Refresh priority: Normal (60d)" },
+                  { value: "high", label: "Refresh priority: High (7d)" },
+                  { value: "frozen", label: "Refresh priority: Frozen (never)" },
+                ]} className="text-xs" />
             </div>
           </Card>
           <Button className="w-full" onClick={save} icon={Save}>Save changes</Button>
