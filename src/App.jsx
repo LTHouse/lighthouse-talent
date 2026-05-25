@@ -1011,13 +1011,13 @@ function HomeDashboard({ user, investor, portcoTag, reviewQueue, featuredWeeks, 
   const greetingName = investor ? investor.name : (user.name || "team");
   const sortedQueue = [...reviewQueue].sort((a, b) => b.sent_at.localeCompare(a.sent_at));
   const currentWeek = getCurrentFeatured(featuredWeeks);
-  const features = getFeatures(currentWeek);
   const weeklyNote = getWeeklyNote(currentWeek);
+  // All-time featured (past + current, deduped, latest first) — the carousel never loops.
+  const allTimeFeatured = useMemo(() => buildAllTimeFeatured(featuredWeeks, _NOW_WEEK), [featuredWeeks]);
   const recentSearches = [...searches].slice(-3).reverse();
   const recentShortlists = [...shortlists].slice(-3).reverse();
   const totalSavedSearches = searches.length;
   const totalShortlists = shortlists.length;
-  const featuredCount = features.length;
 
   function SectionHeader({ children, count }) {
     return (
@@ -1036,18 +1036,18 @@ function HomeDashboard({ user, investor, portcoTag, reviewQueue, featuredWeeks, 
         {investorSubtitle && <div className="text-stone-500 text-sm mt-1">{investorSubtitle}</div>}
       </div>
 
-      {/* SECTION 1: Featured this week — hero spotlight carousel */}
+      {/* SECTION 1: Featured this week — endless carousel of every candidate ever featured */}
       <section className="border-t border-stone-200 pt-8 pb-10">
         <SectionHeader>Featured this week <Zap size={18} className="text-amber-500 fill-amber-500 inline align-middle ml-1" /></SectionHeader>
         {weeklyNote && (
           <blockquote className="border-l-4 border-amber-400 pl-4 py-1 text-base text-stone-700 italic mb-5 max-w-3xl">{weeklyNote}</blockquote>
         )}
-        {featuredCount === 0 ? (
+        {allTimeFeatured.length === 0 ? (
           <p className="text-sm text-stone-500">
-            No featured talent this week. <button onClick={onGoSearch} className="text-amber-600 hover:underline">Browse the full network →</button>
+            No featured talent yet. <button onClick={onGoSearch} className="text-amber-600 hover:underline">Browse the full network →</button>
           </p>
         ) : (
-          <FeaturedHeroCarousel features={features} onOpenCandidate={onOpenCandidate} />
+          <FeaturedCarousel allFeatures={allTimeFeatured} currentWeekStart={_NOW_WEEK} onOpenCandidate={onOpenCandidate} />
         )}
       </section>
 
@@ -1177,152 +1177,98 @@ function ReviewQueueCard({ review, candidate, onOpen, onRespond, onRequestIntro 
 }
 
 // ============================================================
-// FEATURED HERO CAROUSEL — magazine-cover spotlight, auto-rotating
-// 7s rotation, pause on hover/focus/tab-hidden, respect prefers-reduced-motion,
-// manual control via dots + thumbnail strip. Custom impl (no carousel lib needed
-// for our specific requirements).
+// FEATURED CAROUSEL — horizontal scroll of every candidate Zap has featured.
+// No hero. No auto-rotate. Latest features land first with a NEW badge; older
+// features get an MM/YY badge of the last week they were featured.
 // ============================================================
-const HERO_ROTATION_MS = 7000;
-const RESUME_AFTER_IDLE_MS = 15000;
+function FeaturedCarousel({ allFeatures, currentWeekStart, onOpenCandidate }) {
+  const scrollerRef = useRef(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
 
-function FeaturedHeroCarousel({ features, onOpenCandidate }) {
-  const [index, setIndex] = useState(0);
-  const [paused, setPaused] = useState(false);
-  const [reducedMotion, setReducedMotion] = useState(false);
-  const resumeTimer = useRef(null);
-
-  // Respect prefers-reduced-motion + Page Visibility API
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    setReducedMotion(mq.matches);
-    const handler = (e) => setReducedMotion(e.matches);
-    mq.addEventListener?.("change", handler);
-    const onVis = () => setPaused(document.hidden);
-    document.addEventListener("visibilitychange", onVis);
-    return () => { mq.removeEventListener?.("change", handler); document.removeEventListener("visibilitychange", onVis); };
-  }, []);
+    const el = scrollerRef.current;
+    if (!el) return;
+    const update = () => {
+      setCanScrollLeft(el.scrollLeft > 4);
+      setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+    };
+    update();
+    el.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    return () => { el.removeEventListener("scroll", update); window.removeEventListener("resize", update); };
+  }, [allFeatures.length]);
 
-  // Reset index when feature set changes (week rolls over)
-  useEffect(() => { setIndex(0); }, [features.length]);
-
-  // Auto-rotate when active
-  useEffect(() => {
-    if (paused || reducedMotion || features.length < 2) return;
-    const t = setInterval(() => setIndex(i => (i + 1) % features.length), HERO_ROTATION_MS);
-    return () => clearInterval(t);
-  }, [paused, reducedMotion, features.length]);
-
-  function pauseTemporarily() {
-    setPaused(true);
-    if (resumeTimer.current) clearTimeout(resumeTimer.current);
-    resumeTimer.current = setTimeout(() => setPaused(false), RESUME_AFTER_IDLE_MS);
+  function scrollBy(delta) {
+    scrollerRef.current?.scrollBy({ left: delta, behavior: "smooth" });
   }
-  function jumpTo(i) { setIndex(i); pauseTemporarily(); }
-
-  useEffect(() => () => { if (resumeTimer.current) clearTimeout(resumeTimer.current); }, []);
-
-  const feature = features[index];
-  const candidate = CANDIDATES.find(c => c.id === feature?.candidate_id);
-  if (!candidate) return null;
-
-  const single = features.length === 1;
 
   return (
-    <div
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => { if (!resumeTimer.current) setPaused(false); }}
-      onFocus={pauseTemporarily}
-    >
-      <FeaturedHeroCard candidate={candidate} note={feature.curator_note} onOpen={() => onOpenCandidate(candidate.id)} />
-      {!single && (
-        <>
-          <div className="flex items-center justify-center gap-1.5 mt-4">
-            {features.map((_, i) => (
-              <button key={i} onClick={() => jumpTo(i)}
-                aria-label={`Show featured candidate ${i + 1}`}
-                className={`h-1.5 rounded-full transition-all ${i === index ? "bg-amber-500 w-6" : "bg-stone-300 w-1.5 hover:bg-stone-400"}`} />
-            ))}
-            {paused && !reducedMotion && <span className="ml-2 text-[10px] text-stone-400">Paused — auto-resumes</span>}
-            {reducedMotion && <span className="ml-2 text-[10px] text-stone-400">Auto-rotation off (reduced motion)</span>}
-          </div>
-          <div className="flex gap-2 mt-4 overflow-x-auto pb-1 -mx-1 px-1 snap-x">
-            {features.map((f, i) => {
-              const c = CANDIDATES.find(c => c.id === f.candidate_id);
-              if (!c) return null;
-              const motivationShort = c.topMotivation ? MOTIVATION_SHORT[c.topMotivation] : null;
-              const isActive = i === index;
-              return (
-                <button key={f.candidate_id} onClick={() => jumpTo(i)}
-                  className={`snap-start flex-shrink-0 w-[200px] text-left p-3 rounded-xl border transition ${isActive ? "border-amber-400 bg-amber-50/60 shadow-sm" : "border-stone-200 bg-white hover:border-stone-300"}`}>
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <Avatar candidate={c} size={28} />
-                    <div className="font-bold text-sm truncate flex-1 min-w-0">{c.firstName} {c.lastName}</div>
-                    <VettedBadge candidate={c} size={11} />
-                  </div>
-                  <div className="text-xs text-stone-500 truncate mt-1.5">{truncateOnSlash(c.currentRole)}{c.currentCompany && ` · ${c.currentCompany}`}</div>
-                  <div className="text-[11px] text-stone-500 truncate">{c.yearsExperience} yrs · {c.currentLocation}</div>
-                  {motivationShort && (
-                    <div className="mt-1.5">
-                      <span className="inline-block bg-yellow-50/60 border border-yellow-200/60 text-amber-800 rounded-full px-1.5 py-0.5 text-[10px] truncate max-w-full">{motivationShort}</span>
-                    </div>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </>
+    <div className="relative">
+      {canScrollLeft && (
+        <button onClick={() => scrollBy(-280)}
+          aria-label="Scroll featured left"
+          className="hidden md:flex absolute -left-3 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white border border-stone-300 shadow-sm items-center justify-center hover:bg-stone-50">
+          <ChevronLeft size={16} />
+        </button>
       )}
+      {canScrollRight && (
+        <button onClick={() => scrollBy(280)}
+          aria-label="Scroll featured right"
+          className="hidden md:flex absolute -right-3 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white border border-stone-300 shadow-sm items-center justify-center hover:bg-stone-50">
+          <ChevronRight size={16} />
+        </button>
+      )}
+      <div ref={scrollerRef} className="flex gap-3 overflow-x-auto snap-x pb-2 -mx-1 px-1 scroll-smooth">
+        {allFeatures.map(f => {
+          const c = CANDIDATES.find(c => c.id === f.candidate_id);
+          if (!c) return null;
+          const badge = f.week_starting === currentWeekStart
+            ? { label: "NEW", className: "bg-amber-500 text-white" }
+            : { label: _monthYearLabel(f.week_starting), className: "bg-stone-100 text-stone-600 border border-stone-200" };
+          return <FeaturedPreviewCard key={f.candidate_id} candidate={c} note={f.curator_note} badge={badge} onOpen={() => onOpenCandidate(c.id)} />;
+        })}
+      </div>
     </div>
   );
 }
 
-function FeaturedHeroCard({ candidate, note, onOpen }) {
+function FeaturedPreviewCard({ candidate, note, badge, onOpen }) {
   const motivationShort = candidate.topMotivation ? MOTIVATION_SHORT[candidate.topMotivation] : null;
   return (
-    <Card onClick={onOpen} padded={false} className="cursor-pointer overflow-hidden hover:border-amber-400 transition">
-      <div className="grid md:grid-cols-[160px_1fr] gap-0">
-        {/* Left: avatar — flat neutral surface, consistent with other cards on the page */}
-        <div className="flex items-center justify-center bg-stone-50 p-4 md:p-5 border-b md:border-b-0 md:border-r border-stone-200">
-          <div className="relative">
-            <Avatar candidate={candidate} size={90} />
-            {candidate.vetted_in_person && (
-              <span className="absolute -bottom-0.5 -right-0.5 bg-white border border-stone-200 rounded-full p-0.5 shadow-sm">
-                <Zap size={12} className="text-amber-500 fill-amber-500" />
-              </span>
-            )}
-          </div>
-        </div>
-        {/* Right: editorial content — tighter line spacing, button closer to content */}
-        <div className="p-5 md:p-6 flex flex-col">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h3 className="font-display text-2xl">{candidate.firstName} {candidate.lastName}</h3>
-            <VettedBadge candidate={candidate} size={16} />
+    <button onClick={onOpen}
+      className="snap-start flex-shrink-0 w-[280px] text-left p-4 rounded-xl border border-stone-200 bg-white hover:border-amber-400 hover:shadow-sm transition flex flex-col">
+      <div className="flex items-start gap-2 min-w-0">
+        <Avatar candidate={candidate} size={36} />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="font-bold text-sm truncate flex-1 min-w-0">{candidate.firstName} {candidate.lastName}</span>
+            <VettedBadge candidate={candidate} size={11} />
             <LinkedInVerifiedBadge candidate={candidate} />
           </div>
-          <div className="text-stone-600 text-sm mt-0.5">{truncateOnSlash(candidate.currentRole)}{candidate.currentCompany && ` · ${candidate.currentCompany}`}</div>
-          <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-stone-500">
-            <span><Clock size={11} className="inline mr-0.5" /> {candidate.yearsExperience} yrs</span>
-            <span><MapPin size={11} className="inline mr-0.5" /> {candidate.currentLocation}</span>
-            <RelocateBadge candidate={candidate} />
-          </div>
-          {motivationShort && (
-            <div className="mt-2">
-              <span className="inline-block bg-yellow-50/60 border border-yellow-200/60 text-amber-800 rounded-full px-2.5 py-0.5 text-xs">{motivationShort}</span>
-            </div>
-          )}
-          {note && (
-            <blockquote className="mt-3 text-sm text-stone-700 italic flex gap-2 max-w-prose">
-              <Zap size={13} className="text-amber-500 fill-amber-500 flex-shrink-0 mt-0.5" />
-              <span>{note}</span>
-            </blockquote>
-          )}
-          <div className="mt-3">
-            <Button size="sm" icon={ArrowRight} onClick={(e) => { e.stopPropagation(); onOpen(); }}>View profile</Button>
-          </div>
+          <div className="text-xs text-stone-500 truncate">{truncateOnSlash(candidate.currentRole)}{candidate.currentCompany && ` · ${candidate.currentCompany}`}</div>
         </div>
+        <span className={`text-[9px] font-bold uppercase tracking-wider rounded-full px-1.5 py-0.5 flex-shrink-0 ${badge.className}`}>{badge.label}</span>
       </div>
-    </Card>
+      <div className="text-[11px] text-stone-500 mt-2 flex items-center flex-wrap gap-1.5">
+        <span>{candidate.yearsExperience} yrs</span>
+        <span>·</span>
+        <span className="truncate">{candidate.currentLocation}</span>
+        <RelocateBadge candidate={candidate} />
+      </div>
+      {motivationShort && (
+        <div className="mt-2">
+          <span className="inline-block bg-yellow-50/60 border border-yellow-200/60 text-amber-800 rounded-full px-2 py-0.5 text-[10px]">{motivationShort}</span>
+        </div>
+      )}
+      {note && (
+        <blockquote className="mt-2 text-[11px] text-stone-700 italic flex gap-1.5 flex-1">
+          <Zap size={10} className="text-amber-500 fill-amber-500 flex-shrink-0 mt-0.5" />
+          <span className="line-clamp-3">{note}</span>
+        </blockquote>
+      )}
+      <div className="mt-auto pt-3 border-t border-stone-100 text-[11px] font-bold text-amber-600">View profile →</div>
+    </button>
   );
 }
 
@@ -1333,6 +1279,32 @@ function truncateOnSlash(s) {
   if (!s) return "";
   const i = s.indexOf("/");
   return i > 0 ? s.slice(0, i).trim() : s;
+}
+
+function _monthYearLabel(weekStartingISO) {
+  const d = new Date(weekStartingISO);
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yy = String(d.getFullYear() % 100).padStart(2, "0");
+  return `${mm}/${yy}`;
+}
+
+// Flatten every past + current week of features into a single list, deduped by candidate
+// (most recent feature wins so the badge reflects the latest appearance), sorted newest-first.
+function buildAllTimeFeatured(weeks, nowWeek) {
+  const flat = [];
+  for (const w of weeks) {
+    if (w.week_starting > nowWeek) continue; // skip future-scheduled weeks
+    for (const f of getFeatures(w)) flat.push({ ...f, week_starting: w.week_starting });
+  }
+  flat.sort((a, b) => b.week_starting.localeCompare(a.week_starting));
+  const seen = new Set();
+  const unique = [];
+  for (const f of flat) {
+    if (seen.has(f.candidate_id)) continue;
+    seen.add(f.candidate_id);
+    unique.push(f);
+  }
+  return unique;
 }
 
 function CompanySearch({ filters, setFilters, nlQuery, setNlQuery, usedAdvanced, searched, loading, results,
