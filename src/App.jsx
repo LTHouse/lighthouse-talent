@@ -1,7 +1,7 @@
 // Lighthouse Talent — MVP (strip-down from v1)
 // Core loop: company logs in → filter search → finds candidates → requests warm intro through Zap.
 // All mock data in src/data.js; ready to swap to Supabase later via src/lib/supabase.js.
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import {
   Zap, ChevronRight, ChevronLeft, ChevronDown, ChevronUp, Search, Filter, Linkedin,
   CheckCircle2, Sparkles, X, ArrowRight, ArrowLeft, MapPin, Briefcase, GraduationCap,
@@ -37,12 +37,14 @@ const CANDIDATES = RAW_CANDIDATES.map(c => {
     vetted_in_person: vetted,
     vetted_at: vetted ? _seededVettedDate(c.id) : null,
     vetted_by: vetted ? "Zap" : null,
-    // LinkedIn enrichment fields — seed candidates are NOT bulk-enriched per spec.
-    // Admin can spot-enrich individual candidates via the "Refresh now" button.
+    // LinkedIn fields. With Proxycurl shut down, enrichment is deferred — we just
+    // keep the shape so the UI can render whatever lands once a vendor is chosen.
     linkedin_data: null,
     linkedin_data_last_updated: null,
     linkedin_data_source: null,
     linkedin_refresh_priority: "normal", // normal | high | frozen
+    linkedin_verified: false, // true once the candidate completes Sign In with LinkedIn OAuth
+    intake_source: "Imported", // "LinkedIn OAuth" | "Manual entry" | "Imported"
   };
 });
 
@@ -62,15 +64,33 @@ function _shiftWeek(weekStart, deltaWeeks) {
 }
 const _NOW_WEEK = _isoWeekStart(new Date());
 const _VETTED_IDS = CANDIDATES.filter(c => c.vetted_in_person).map(c => c.id);
-function _pickVetted(n, offset = 0) {
-  return _VETTED_IDS.slice(offset, offset + n);
+function _pickFeatures(n, offset = 0, notes = []) {
+  return _VETTED_IDS.slice(offset, offset + n).map((id, i) => ({ candidate_id: id, curator_note: notes[i] || "" }));
 }
 const INITIAL_FEATURED_WEEKS = [
-  { week_starting: _shiftWeek(_NOW_WEEK, -2), candidate_ids: _pickVetted(3, 0), curator_note: "Three operators who've shipped real product under pressure." },
-  { week_starting: _shiftWeek(_NOW_WEEK, -1), candidate_ids: _pickVetted(3, 3), curator_note: "" },
-  { week_starting: _NOW_WEEK, candidate_ids: _pickVetted(5, 6), curator_note: "Five names that keep coming up in founder conversations this month." },
-  { week_starting: _shiftWeek(_NOW_WEEK, 1), candidate_ids: _pickVetted(4, 11), curator_note: "" },
+  { week_starting: _shiftWeek(_NOW_WEEK, -2), candidate_features: _pickFeatures(3, 0), weekly_note: "Three operators who've shipped real product under pressure." },
+  { week_starting: _shiftWeek(_NOW_WEEK, -1), candidate_features: _pickFeatures(3, 3), weekly_note: "" },
+  { week_starting: _NOW_WEEK, candidate_features: _pickFeatures(5, 6, [
+    "Shipped Wayfair's relocation hub end-to-end. Now ready to do it for a founder.",
+    "Six years at three startups before Anvil. Calmest operator in any room.",
+    "Came up via the Nashville music scene — turned product into a six-figure ARR business.",
+    "Fullstack engineer who can also write the marketing copy. Rare combo.",
+    "Customer success leader who actually loves the renewal call.",
+  ]), weekly_note: "Five names that keep coming up in founder conversations this month." },
+  { week_starting: _shiftWeek(_NOW_WEEK, 1), candidate_features: _pickFeatures(4, 11), weekly_note: "" },
 ];
+
+// Backward-compat reader — supports the older { candidate_ids, curator_note } shape too.
+function getFeatures(week) {
+  if (!week) return [];
+  if (Array.isArray(week.candidate_features)) return week.candidate_features;
+  if (Array.isArray(week.candidate_ids)) return week.candidate_ids.map(id => ({ candidate_id: id, curator_note: "" }));
+  return [];
+}
+function getWeeklyNote(week) {
+  if (!week) return "";
+  return week.weekly_note || week.curator_note || "";
+}
 
 // Sent for Review — Zap-pushed candidates landing on a company/investor's home dashboard.
 const INITIAL_SENT_FOR_REVIEW = [
@@ -282,6 +302,21 @@ function VettedBadge({ candidate, size = 14 }) {
         </div>
       )}
     </>
+  );
+}
+
+// "Verified via LinkedIn" badge — identity verification (Sign In with LinkedIn OAuth).
+// Visually distinct from the ⚡ bolt: neutral LinkedIn-blue, utility-style, quieter.
+function LinkedInVerifiedBadge({ candidate, size = 12 }) {
+  if (!candidate?.linkedin_verified) return null;
+  return (
+    <span
+      title="Identity verified via LinkedIn"
+      aria-label="Identity verified via LinkedIn"
+      className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-[#0a66c2] text-white align-middle"
+    >
+      <Linkedin size={size - 4} />
+    </span>
   );
 }
 
@@ -519,13 +554,14 @@ function TalentLinkedIn({ profile, update, onNext, onBack }) {
       // Mock-parse: derive name from URL slug
       const slug = (profile.linkedin.match(/linkedin\.com\/in\/([^/]+)/i) || [, "demo-user"])[1].replace(/[-_]/g, " ");
       const [first, ...rest] = slug.split(/\s+/).map(p => p.charAt(0).toUpperCase() + p.slice(1));
+      // Sign In with LinkedIn (mock): we get verified identity (name, email, photo, URL).
+      // Role/company are NOT returned — candidate types those manually on step 2.
       update({
         linkedinConnected: true,
+        linkedin_verified: true,
+        intake_source: "LinkedIn OAuth",
         firstName: profile.firstName || first || "Demo",
         lastName: profile.lastName || rest.join(" ") || "Candidate",
-        currentRole: profile.currentRole || "Senior Product Manager",
-        currentCompany: profile.currentCompany || "Highnote",
-        skills: profile.skills.length ? profile.skills : ["product strategy", "roadmapping", "user research"],
       });
       setLoading(false);
     }, 1100);
@@ -550,9 +586,8 @@ function TalentLinkedIn({ profile, update, onNext, onBack }) {
       </Card>
       {profile.linkedinConnected && (
         <Card className="border-emerald-300 bg-emerald-50/40">
-          <div className="flex items-center gap-2 text-emerald-700 font-bold text-sm"><CheckCircle2 size={16} /> Connected</div>
-          <div className="mt-2 text-sm">Found <b>{profile.firstName} {profile.lastName}</b> · {profile.currentRole} {profile.currentCompany && `at ${profile.currentCompany}`}.</div>
-          <div className="mt-2 text-xs text-stone-500">You can correct the auto-filled fields on the next step.</div>
+          <div className="flex items-center gap-2 text-emerald-700 font-bold text-sm"><CheckCircle2 size={16} /> Identity verified via LinkedIn</div>
+          <div className="mt-2 text-sm">Welcome, <b>{profile.firstName} {profile.lastName}</b>. We'll grab your role + company on the next step.</div>
         </Card>
       )}
       <div className="flex justify-end pt-2">
@@ -976,14 +1011,13 @@ function HomeDashboard({ user, investor, portcoTag, reviewQueue, featuredWeeks, 
   const greetingName = investor ? investor.name : (user.name || "team");
   const sortedQueue = [...reviewQueue].sort((a, b) => b.sent_at.localeCompare(a.sent_at));
   const currentWeek = getCurrentFeatured(featuredWeeks);
-  const featuredCandidates = currentWeek ? currentWeek.candidate_ids.map(id => CANDIDATES.find(c => c.id === id)).filter(Boolean) : [];
+  const features = getFeatures(currentWeek);
+  const weeklyNote = getWeeklyNote(currentWeek);
   const recentSearches = [...searches].slice(-3).reverse();
   const recentShortlists = [...shortlists].slice(-3).reverse();
   const totalSavedSearches = searches.length;
   const totalShortlists = shortlists.length;
-  // Featured grid: cap at 3 cols/row. 4 → 3+1, 5 → 3+2, 6 → 3+3. Cards keep consistent width
-  // across rows (wrapped cards left-align and don't stretch). Mobile = single-column stack.
-  const featuredCount = featuredCandidates.length;
+  const featuredCount = features.length;
 
   function SectionHeader({ children, count }) {
     return (
@@ -1002,20 +1036,18 @@ function HomeDashboard({ user, investor, portcoTag, reviewQueue, featuredWeeks, 
         {investorSubtitle && <div className="text-stone-500 text-sm mt-1">{investorSubtitle}</div>}
       </div>
 
-      {/* SECTION 1: Featured this week — leads the page (editorial first) */}
+      {/* SECTION 1: Featured this week — hero spotlight carousel */}
       <section className="border-t border-stone-200 pt-8 pb-10">
         <SectionHeader>Featured this week <Zap size={18} className="text-amber-500 fill-amber-500 inline align-middle ml-1" /></SectionHeader>
-        {currentWeek?.curator_note && (
-          <blockquote className="border-l-4 border-amber-400 pl-4 py-1 text-base text-stone-700 italic mb-5 max-w-3xl">{currentWeek.curator_note}</blockquote>
+        {weeklyNote && (
+          <blockquote className="border-l-4 border-amber-400 pl-4 py-1 text-base text-stone-700 italic mb-5 max-w-3xl">{weeklyNote}</blockquote>
         )}
         {featuredCount === 0 ? (
           <p className="text-sm text-stone-500">
             No featured talent this week. <button onClick={onGoSearch} className="text-amber-600 hover:underline">Browse the full network →</button>
           </p>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 items-stretch">
-            {featuredCandidates.map(c => <FeaturedCandidateCard key={c.id} candidate={c} onOpen={() => onOpenCandidate(c.id)} />)}
-          </div>
+          <FeaturedHeroCarousel features={features} onOpenCandidate={onOpenCandidate} />
         )}
       </section>
 
@@ -1144,31 +1176,140 @@ function ReviewQueueCard({ review, candidate, onOpen, onRespond, onRequestIntro 
   );
 }
 
-function FeaturedCandidateCard({ candidate, onOpen }) {
+// ============================================================
+// FEATURED HERO CAROUSEL — magazine-cover spotlight, auto-rotating
+// 7s rotation, pause on hover/focus/tab-hidden, respect prefers-reduced-motion,
+// manual control via dots + thumbnail strip. Custom impl (no carousel lib needed
+// for our specific requirements).
+// ============================================================
+const HERO_ROTATION_MS = 7000;
+const RESUME_AFTER_IDLE_MS = 15000;
+
+function FeaturedHeroCarousel({ features, onOpenCandidate }) {
+  const [index, setIndex] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const [reducedMotion, setReducedMotion] = useState(false);
+  const resumeTimer = useRef(null);
+
+  // Respect prefers-reduced-motion + Page Visibility API
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setReducedMotion(mq.matches);
+    const handler = (e) => setReducedMotion(e.matches);
+    mq.addEventListener?.("change", handler);
+    const onVis = () => setPaused(document.hidden);
+    document.addEventListener("visibilitychange", onVis);
+    return () => { mq.removeEventListener?.("change", handler); document.removeEventListener("visibilitychange", onVis); };
+  }, []);
+
+  // Reset index when feature set changes (week rolls over)
+  useEffect(() => { setIndex(0); }, [features.length]);
+
+  // Auto-rotate when active
+  useEffect(() => {
+    if (paused || reducedMotion || features.length < 2) return;
+    const t = setInterval(() => setIndex(i => (i + 1) % features.length), HERO_ROTATION_MS);
+    return () => clearInterval(t);
+  }, [paused, reducedMotion, features.length]);
+
+  function pauseTemporarily() {
+    setPaused(true);
+    if (resumeTimer.current) clearTimeout(resumeTimer.current);
+    resumeTimer.current = setTimeout(() => setPaused(false), RESUME_AFTER_IDLE_MS);
+  }
+  function jumpTo(i) { setIndex(i); pauseTemporarily(); }
+
+  useEffect(() => () => { if (resumeTimer.current) clearTimeout(resumeTimer.current); }, []);
+
+  const feature = features[index];
+  const candidate = CANDIDATES.find(c => c.id === feature?.candidate_id);
+  if (!candidate) return null;
+
+  const single = features.length === 1;
+
+  return (
+    <div
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => { if (!resumeTimer.current) setPaused(false); }}
+      onFocus={pauseTemporarily}
+    >
+      <FeaturedHeroCard candidate={candidate} note={feature.curator_note} onOpen={() => onOpenCandidate(candidate.id)} />
+      {!single && (
+        <>
+          <div className="flex items-center justify-center gap-1.5 mt-4">
+            {features.map((_, i) => (
+              <button key={i} onClick={() => jumpTo(i)}
+                aria-label={`Show featured candidate ${i + 1}`}
+                className={`h-1.5 rounded-full transition-all ${i === index ? "bg-amber-500 w-6" : "bg-stone-300 w-1.5 hover:bg-stone-400"}`} />
+            ))}
+            {paused && !reducedMotion && <span className="ml-2 text-[10px] text-stone-400">Paused — auto-resumes</span>}
+            {reducedMotion && <span className="ml-2 text-[10px] text-stone-400">Auto-rotation off (reduced motion)</span>}
+          </div>
+          <div className="flex gap-2 mt-4 overflow-x-auto pb-1 -mx-1 px-1 snap-x">
+            {features.map((f, i) => {
+              const c = CANDIDATES.find(c => c.id === f.candidate_id);
+              if (!c) return null;
+              return (
+                <button key={f.candidate_id} onClick={() => jumpTo(i)}
+                  className={`snap-start flex-shrink-0 w-20 text-center p-1.5 rounded-lg border transition ${i === index ? "border-amber-400 bg-amber-50/60" : "border-transparent hover:border-stone-200"}`}>
+                  <div className="flex justify-center mb-1"><Avatar candidate={c} size={36} /></div>
+                  <div className="text-[10px] font-semibold truncate">{c.firstName} {c.lastName}</div>
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function FeaturedHeroCard({ candidate, note, onOpen }) {
   const motivationShort = candidate.topMotivation ? MOTIVATION_SHORT[candidate.topMotivation] : null;
   return (
-    <Card onClick={onOpen} className="hover:border-amber-400 transition cursor-pointer flex flex-col h-full">
-      <div className="flex items-start gap-3">
-        <Avatar candidate={candidate} size={48} />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5 min-w-0">
-            <span className="font-bold truncate">{candidate.firstName} {candidate.lastName}</span>
-            <VettedBadge candidate={candidate} size={14} />
+    <Card onClick={onOpen} padded={false} className="cursor-pointer overflow-hidden hover:border-amber-400 transition">
+      <div className="grid md:grid-cols-[200px_1fr] gap-0 min-h-[280px]">
+        {/* Left: large avatar with vetted corner badge */}
+        <div className="flex items-center justify-center bg-gradient-to-br from-amber-50 to-stone-50 p-6 md:p-8 relative">
+          <div className="relative">
+            <Avatar candidate={candidate} size={120} />
+            {candidate.vetted_in_person && (
+              <span className="absolute -bottom-1 -right-1 bg-white border-2 border-amber-400 rounded-full p-1 shadow">
+                <Zap size={16} className="text-amber-500 fill-amber-500" />
+              </span>
+            )}
           </div>
-          <div className="text-sm text-stone-500 truncate">{candidate.currentRole}{candidate.currentCompany && ` · ${candidate.currentCompany}`}</div>
+        </div>
+        {/* Right: editorial content */}
+        <div className="p-6 md:p-8 flex flex-col">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h3 className="font-display text-3xl">{candidate.firstName} {candidate.lastName}</h3>
+            <VettedBadge candidate={candidate} size={18} />
+            <LinkedInVerifiedBadge candidate={candidate} />
+          </div>
+          <div className="text-stone-600 mt-1">{candidate.currentRole}{candidate.currentCompany && ` · ${candidate.currentCompany}`}</div>
+          <div className="flex flex-wrap items-center gap-3 mt-3 text-xs text-stone-500">
+            <span><Clock size={11} className="inline mr-0.5" /> {candidate.yearsExperience} yrs</span>
+            <span><MapPin size={11} className="inline mr-0.5" /> {candidate.currentLocation}</span>
+            <RelocateBadge candidate={candidate} />
+          </div>
           {motivationShort && (
-            <div className="mt-1.5">
-              <span className="inline-block bg-yellow-50/60 border border-yellow-200/60 text-amber-800 rounded-full px-2 py-0.5 text-[11px]">{motivationShort}</span>
+            <div className="mt-3">
+              <span className="inline-block bg-yellow-50/60 border border-yellow-200/60 text-amber-800 rounded-full px-2.5 py-0.5 text-xs">{motivationShort}</span>
             </div>
           )}
-          <div className="text-xs text-stone-500 mt-2 flex flex-wrap items-center gap-2">
-            <span><Clock size={10} className="inline mr-0.5" /> {candidate.yearsExperience} yrs</span>
-            <span className="truncate"><MapPin size={10} className="inline mr-0.5" /> {candidate.currentLocation}</span>
-            <RelocateBadge candidate={candidate} />
+          {note && (
+            <blockquote className="mt-4 text-sm text-stone-700 italic flex gap-2 max-w-prose">
+              <Zap size={14} className="text-amber-500 fill-amber-500 flex-shrink-0 mt-0.5" />
+              <span>{note}</span>
+            </blockquote>
+          )}
+          <div className="mt-auto pt-5">
+            <Button icon={ArrowRight} onClick={(e) => { e.stopPropagation(); onOpen(); }}>View profile</Button>
           </div>
         </div>
       </div>
-      <button onClick={(e) => { e.stopPropagation(); onOpen(); }} className="mt-auto pt-3 w-full text-center text-xs font-bold text-amber-600 hover:text-amber-700 border-t border-stone-100">View profile →</button>
     </Card>
   );
 }
@@ -1347,6 +1488,7 @@ function CandidateCardMVP({ candidate, onOpen, onRequestIntro, onAddToShortlist,
             <div className="flex items-center gap-1.5 min-w-0">
               <span className="font-bold text-lg truncate">{candidate.firstName} {candidate.lastName}</span>
               <VettedBadge candidate={candidate} size={16} />
+              <LinkedInVerifiedBadge candidate={candidate} />
             </div>
             <div className="text-sm text-stone-500 truncate">{candidate.currentRole}{candidate.currentCompany && ` · ${candidate.currentCompany}`}</div>
           </div>
@@ -1383,6 +1525,13 @@ function CandidateProfile({ candidate, onBack, onRequestIntro }) {
   const locDisplay = candidate.relocationStatus === "remote_only"
     ? `${candidate.currentLocation} — remote only`
     : candidate.currentLocation;
+  // View tracking — every company-side candidate detail view is logged.
+  // Anti-poaching receipts: if a company hires without requesting an intro, Zap has the log.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!window.__lt_profile_views) window.__lt_profile_views = [];
+    window.__lt_profile_views.push({ candidate_id: candidate.id, viewed_at: new Date().toISOString() });
+  }, [candidate.id]);
   return (
     <div className="space-y-4 max-w-4xl mx-auto">
       <Button variant="ghost" icon={ArrowLeft} size="sm" onClick={onBack}>Back to results</Button>
@@ -1393,6 +1542,7 @@ function CandidateProfile({ candidate, onBack, onRequestIntro }) {
             <div className="flex items-center gap-2 flex-wrap">
               <div className="text-3xl font-display">{candidate.firstName} {candidate.lastName}</div>
               <VettedBadge candidate={candidate} size={22} />
+              <LinkedInVerifiedBadge candidate={candidate} />
               <RelocateBadge candidate={candidate} />
             </div>
             <div className="text-stone-500">{candidate.currentRole}{candidate.currentCompany && ` · ${candidate.currentCompany}`}</div>
@@ -1401,7 +1551,8 @@ function CandidateProfile({ candidate, onBack, onRequestIntro }) {
               <span><MapPin size={11} className="inline mr-0.5" /> {locDisplay}</span>
               <span><Briefcase size={11} className="inline mr-0.5" /> {candidate.workMode}</span>
             </div>
-            {candidate.linkedin && <a href={candidate.linkedin} target="_blank" rel="noreferrer" className="text-xs text-amber-600 hover:underline mt-2 inline-flex items-center gap-1"><Linkedin size={11} /> LinkedIn profile</a>}
+            {/* LinkedIn URL intentionally hidden on company-facing surfaces (anti-poaching).
+                Admin sees it. Companies see it only after Zap approves an intro. */}
           </div>
           <Button icon={Coffee} onClick={onRequestIntro}>Request warm intro through Zap</Button>
         </div>
@@ -1741,7 +1892,7 @@ function AdminPortal({ user, logout }) {
 
   const pendingIntros = introRequests.filter(r => r.status === "pending").length;
   const currentFeatured = getCurrentFeatured(featuredWeeks);
-  const featuredCount = currentFeatured?.candidate_ids?.length || 0;
+  const featuredCount = getFeatures(currentFeatured).length;
   const sentPending = sentForReview.filter(r => r.status === "pending").length;
   const sentActioned = sentForReview.filter(r => r.status !== "pending" && r.response_at && (Date.now() - new Date(r.response_at).getTime()) < 7 * 86400000).length;
 
@@ -1771,7 +1922,7 @@ function AdminPortal({ user, logout }) {
         <div className="mt-6 pt-4 border-t border-stone-200">
           <div className="text-[10px] uppercase tracking-wider text-stone-500 font-bold px-2 mb-2">At a glance</div>
           <div className="px-2 space-y-2 text-[11px] text-stone-600">
-            <div><div className="font-bold text-amber-700">🌟 Featured</div><div>{featuredCount} this week · {featuredWeeks.reduce((s, w) => s + w.candidate_ids.length, 0)} all-time</div></div>
+            <div><div className="font-bold text-amber-700">🌟 Featured</div><div>{featuredCount} this week · {featuredWeeks.reduce((s, w) => s + getFeatures(w).length, 0)} all-time</div></div>
             <div><div className="font-bold text-amber-700">📨 Sent for review</div><div>{sentPending} pending · {sentActioned} actioned in 7d</div></div>
           </div>
         </div>
@@ -2262,30 +2413,56 @@ function AdminFeaturedTalent({ weeks, setWeeks, candidates }) {
   const [showHistory, setShowHistory] = useState(false);
   const [pickerOpenFor, setPickerOpenFor] = useState(null); // week_starting
 
+  // Always normalize legacy { candidate_ids, curator_note } weeks to the new
+  // { candidate_features, weekly_note } shape on write.
   function updateWeek(weekStart, patch) {
-    setWeeks(ws => ws.map(w => w.week_starting === weekStart ? { ...w, ...patch } : w));
-  }
-  function addCandidateToWeek(weekStart, candidateId) {
     setWeeks(ws => ws.map(w => {
       if (w.week_starting !== weekStart) return w;
-      if (w.candidate_ids.includes(candidateId)) return w;
-      if (w.candidate_ids.length >= 5) { alert("Max 5 candidates per week."); return w; }
-      return { ...w, candidate_ids: [...w.candidate_ids, candidateId] };
+      const normalized = { ...w, candidate_features: getFeatures(w), weekly_note: getWeeklyNote(w) };
+      delete normalized.candidate_ids; delete normalized.curator_note;
+      return { ...normalized, ...patch };
+    }));
+  }
+  function addCandidateToWeek(weekStart, candidateId, curatorNote = "") {
+    setWeeks(ws => ws.map(w => {
+      if (w.week_starting !== weekStart) return w;
+      const features = getFeatures(w);
+      if (features.some(f => f.candidate_id === candidateId)) return w;
+      if (features.length >= 5) { alert("Max 5 candidates per week."); return w; }
+      const next = { ...w, candidate_features: [...features, { candidate_id: candidateId, curator_note: curatorNote }], weekly_note: getWeeklyNote(w) };
+      delete next.candidate_ids; delete next.curator_note;
+      return next;
     }));
     setPickerOpenFor(null);
   }
   function removeCandidateFromWeek(weekStart, candidateId) {
-    setWeeks(ws => ws.map(w => w.week_starting === weekStart ? { ...w, candidate_ids: w.candidate_ids.filter(id => id !== candidateId) } : w));
+    setWeeks(ws => ws.map(w => {
+      if (w.week_starting !== weekStart) return w;
+      const features = getFeatures(w).filter(f => f.candidate_id !== candidateId);
+      const next = { ...w, candidate_features: features, weekly_note: getWeeklyNote(w) };
+      delete next.candidate_ids; delete next.curator_note;
+      return next;
+    }));
+  }
+  function updateFeatureNote(weekStart, candidateId, note) {
+    setWeeks(ws => ws.map(w => {
+      if (w.week_starting !== weekStart) return w;
+      const features = getFeatures(w).map(f => f.candidate_id === candidateId ? { ...f, curator_note: note } : f);
+      const next = { ...w, candidate_features: features, weekly_note: getWeeklyNote(w) };
+      delete next.candidate_ids; delete next.curator_note;
+      return next;
+    }));
   }
   function scheduleNextWeek() {
     const lastUpcoming = upcoming[0]?.week_starting || currentWeekStart;
     const next = _shiftWeek(lastUpcoming, 1);
     if (weeks.some(w => w.week_starting === next)) return;
-    setWeeks([...weeks, { week_starting: next, candidate_ids: [], curator_note: "" }]);
+    setWeeks([...weeks, { week_starting: next, candidate_features: [], weekly_note: "" }]);
   }
 
   function renderWeekCard(week) {
     const isCurrent = week.week_starting === currentWeekStart;
+    const features = getFeatures(week);
     return (
       <Card key={week.week_starting} className={isCurrent ? "border-amber-400" : ""}>
         <div className="flex items-center justify-between gap-2 flex-wrap mb-2">
@@ -2295,27 +2472,30 @@ function AdminFeaturedTalent({ weeks, setWeeks, candidates }) {
             {week.week_starting > currentWeekStart && <Tag size="sm">Scheduled</Tag>}
             {week.week_starting < currentWeekStart && <Tag size="sm">Archived</Tag>}
           </div>
-          <div className="text-xs text-stone-500">{week.candidate_ids.length} / 5</div>
+          <div className="text-xs text-stone-500">{features.length} / 5</div>
         </div>
-        <Field label="Curator note" hint="Optional — shows on the company/investor home dashboard.">
-          <Textarea rows={2} value={week.curator_note || ""} onChange={e => updateWeek(week.week_starting, { curator_note: e.target.value })} placeholder="e.g. Three operators this week who keep coming up in conversations." className="text-sm" />
+        <Field label="Weekly note" hint="Optional — sits above the carousel as the editorial intro.">
+          <Textarea rows={2} value={getWeeklyNote(week)} onChange={e => updateWeek(week.week_starting, { weekly_note: e.target.value })} placeholder="e.g. Three operators this week who keep coming up in conversations." className="text-sm" />
         </Field>
         <div className="mt-3 space-y-2">
-          {week.candidate_ids.map(id => {
-            const c = candidates.find(c => c.id === id);
+          {features.map(f => {
+            const c = candidates.find(c => c.id === f.candidate_id);
             if (!c) return null;
             return (
-              <div key={id} className="flex items-center gap-2 p-2 bg-stone-50 border border-stone-200 rounded-lg">
-                <Avatar candidate={c} size={28} />
-                <div className="flex-1 min-w-0">
-                  <div className="font-bold text-sm flex items-center gap-1.5">{c.firstName} {c.lastName} <VettedBadge candidate={c} size={11} /></div>
-                  <div className="text-xs text-stone-500 truncate">{c.currentRole}</div>
+              <div key={f.candidate_id} className="p-2 bg-stone-50 border border-stone-200 rounded-lg space-y-2">
+                <div className="flex items-center gap-2">
+                  <Avatar candidate={c} size={28} />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-bold text-sm flex items-center gap-1.5">{c.firstName} {c.lastName} <VettedBadge candidate={c} size={11} /></div>
+                    <div className="text-xs text-stone-500 truncate">{c.currentRole}</div>
+                  </div>
+                  <button onClick={() => removeCandidateFromWeek(week.week_starting, f.candidate_id)} className="text-stone-400 hover:text-rose-600 text-xs"><X size={14} /></button>
                 </div>
-                <button onClick={() => removeCandidateFromWeek(week.week_starting, id)} className="text-stone-400 hover:text-rose-600 text-xs"><X size={14} /></button>
+                <Textarea rows={2} value={f.curator_note || ""} onChange={e => updateFeatureNote(week.week_starting, f.candidate_id, e.target.value)} placeholder={`Why are you featuring ${c.firstName} this week? (optional)`} className="text-xs" />
               </div>
             );
           })}
-          {week.candidate_ids.length < 5 && (
+          {features.length < 5 && (
             <Button size="sm" variant="secondary" icon={Plus} onClick={() => setPickerOpenFor(week.week_starting)}>Add featured candidate</Button>
           )}
         </div>
@@ -2345,9 +2525,9 @@ function AdminFeaturedTalent({ weeks, setWeeks, candidates }) {
       {pickerOpenFor && (
         <FeaturedPickerModal
           vettedCandidates={vetted}
-          excludeIds={(weeks.find(w => w.week_starting === pickerOpenFor)?.candidate_ids) || []}
+          excludeIds={getFeatures(weeks.find(w => w.week_starting === pickerOpenFor)).map(f => f.candidate_id)}
           onClose={() => setPickerOpenFor(null)}
-          onPick={(id) => addCandidateToWeek(pickerOpenFor, id)}
+          onPick={(id, note) => addCandidateToWeek(pickerOpenFor, id, note)}
         />
       )}
     </div>
@@ -2356,34 +2536,63 @@ function AdminFeaturedTalent({ weeks, setWeeks, candidates }) {
 
 function FeaturedPickerModal({ vettedCandidates, excludeIds, onClose, onPick }) {
   const [search, setSearch] = useState("");
+  const [selected, setSelected] = useState(null);
+  const [note, setNote] = useState("");
   const pool = vettedCandidates.filter(c => !excludeIds.includes(c.id));
   const filtered = pool.filter(c => {
     if (!search) return true;
     const q = search.toLowerCase();
     return (c.firstName + " " + c.lastName + " " + c.currentRole).toLowerCase().includes(q);
   }).slice(0, 50);
+  function confirm() {
+    if (!selected) return;
+    onPick(selected.id, note.trim());
+    setSelected(null); setNote("");
+  }
   return (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={onClose}>
       <div onClick={e => e.stopPropagation()} className="bg-white rounded-2xl p-6 max-w-2xl w-full max-h-[80vh] flex flex-col">
         <div className="flex items-center justify-between gap-3 mb-3">
-          <h3 className="font-display text-xl">Add a featured candidate</h3>
+          <h3 className="font-display text-xl">{selected ? `Feature ${selected.firstName}` : "Add a featured candidate"}</h3>
           <button onClick={onClose} className="text-stone-500 hover:text-black"><X size={18} /></button>
         </div>
-        <div className="text-xs text-stone-500 mb-3">Only vetted (⚡) candidates are listed. Mark candidates as vetted from their admin profile to add them here.</div>
-        <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by name or role" className="mb-3" />
-        <div className="flex-1 overflow-y-auto space-y-1 -mx-2 px-2">
-          {filtered.length === 0 && <div className="text-sm text-stone-500 text-center py-8">No matching vetted candidates.</div>}
-          {filtered.map(c => (
-            <button key={c.id} onClick={() => onPick(c.id)} className="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-stone-50 text-left">
-              <Avatar candidate={c} size={32} />
+        {!selected ? (
+          <>
+            <div className="text-xs text-stone-500 mb-3">Only vetted (⚡) candidates are listed. Mark candidates as vetted from their admin profile to add them here.</div>
+            <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by name or role" className="mb-3" />
+            <div className="flex-1 overflow-y-auto space-y-1 -mx-2 px-2">
+              {filtered.length === 0 && <div className="text-sm text-stone-500 text-center py-8">No matching vetted candidates.</div>}
+              {filtered.map(c => (
+                <button key={c.id} onClick={() => setSelected(c)} className="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-stone-50 text-left">
+                  <Avatar candidate={c} size={32} />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-bold text-sm flex items-center gap-1.5">{c.firstName} {c.lastName} <VettedBadge candidate={c} size={11} /></div>
+                    <div className="text-xs text-stone-500 truncate">{c.currentRole}{c.currentCompany && ` · ${c.currentCompany}`}</div>
+                  </div>
+                  <ChevronRight size={14} className="text-stone-400" />
+                </button>
+              ))}
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="flex items-center gap-2 mb-4 p-2.5 bg-stone-50 border border-stone-200 rounded-lg">
+              <Avatar candidate={selected} size={36} />
               <div className="flex-1 min-w-0">
-                <div className="font-bold text-sm flex items-center gap-1.5">{c.firstName} {c.lastName} <VettedBadge candidate={c} size={11} /></div>
-                <div className="text-xs text-stone-500 truncate">{c.currentRole}{c.currentCompany && ` · ${c.currentCompany}`}</div>
+                <div className="font-bold text-sm flex items-center gap-1.5">{selected.firstName} {selected.lastName} <VettedBadge candidate={selected} size={11} /></div>
+                <div className="text-xs text-stone-500 truncate">{selected.currentRole}{selected.currentCompany && ` · ${selected.currentCompany}`}</div>
               </div>
-              <Plus size={14} className="text-stone-400" />
-            </button>
-          ))}
-        </div>
+              <button onClick={() => setSelected(null)} className="text-xs text-stone-500 hover:text-amber-600">Change</button>
+            </div>
+            <Field label={`Why are you featuring ${selected.firstName} this week?`} hint="Optional. Shows on the hero card as Zap's pull-quote. Skip to feature without a note.">
+              <Textarea rows={3} value={note} onChange={e => setNote(e.target.value)} placeholder={`e.g. ${selected.firstName} just shipped a major release — perfect timing for a Series A operator role.`} className="text-sm" />
+            </Field>
+            <div className="flex justify-end gap-2 mt-4">
+              <Button variant="ghost" onClick={() => setSelected(null)}>Back</Button>
+              <Button icon={Plus} onClick={confirm}>Add to this week</Button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
