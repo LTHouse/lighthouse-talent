@@ -8,7 +8,9 @@ const MOCK_USERS = [
   // Demo talent user is pinned to candidate id 2 (Eliana Eskinazi) so messages and interested companies have real data
   { email: "talent@lt.house", password: "password", role: "talent", name: "Eliana Eskinazi", candidateId: 2 },
   { email: "company@lt.house", password: "password", role: "company", name: "Demo Company", companyId: 5 },
-  { email: "investor@lt.house", password: "password", role: "investor", name: "Demo Investor", investorId: 1 },
+  // Investor role removed from MVP per strip handoff. UI parked in feature/investor-portal-v1
+  // branch. Schema field on user accounts (role: "investor") stays dormant — re-add a credential
+  // here when reactivating.
   { email: "zap@lt.house", password: "password", role: "admin", name: "Zap" },
   { email: "mike@lt.house", password: "password", role: "admin", name: "Mike" },
 ];
@@ -60,26 +62,24 @@ export function useAuth() {
 // ============================================================
 // LOGIN SCREEN — 4 role tabs, mock credentials, one-call to login()
 // ============================================================
-// Login tabs. Labels are framed for the audience: "Startup" / "PortCo Manager"
-// are what users see; "company" / "investor" remain the internal role keys.
+// Login tabs. MVP roles only: Talent / Company / Admin (investor removed per strip handoff).
 const ROLE_TABS = [
   { k: "talent", l: "Talent", desc: "Apply to the network" },
-  { k: "company", l: "Startup", desc: "Search and hire from the network" },
-  { k: "investor", l: "PortCo Manager", desc: "Search across your portfolio companies" },
+  { k: "company", l: "Company", desc: "Search and hire from the network" },
   { k: "admin", l: "Admin", desc: "Lighthouse internal tools" },
 ];
 
 // Tab sets shown for each entry context. The default ("all") is the catch-all
-// shown when somebody clicks the small "Sign in" link in the header.
+// shown when somebody clicks the small "Sign in" link in the header. Hire context
+// now has a single tab — the tab strip hides itself when there's nothing to choose.
 const TAB_SETS = {
-  hire: ["company", "investor"],
-  all: ["talent", "company", "investor", "admin"],
+  hire: ["company"],
+  all: ["talent", "company", "admin"],
 };
 
 const PRESET_FOR_TAB = {
   talent: "talent@lt.house",
   company: "company@lt.house",
-  investor: "investor@lt.house",
   admin: "zap@lt.house",
 };
 
@@ -115,7 +115,7 @@ export function LoginScreen() {
   if (view === "landing") {
     return <PublicLanding
       onSignIn={(preset, ctx) => {
-        const nextContext = ctx || (preset === "company" || preset === "investor" ? "hire" : "all");
+        const nextContext = ctx || (preset === "company" ? "hire" : "all");
         setContext(nextContext);
         const fallback = TAB_SETS[nextContext][0];
         const chosen = preset && TAB_SETS[nextContext].includes(preset) ? preset : fallback;
@@ -129,7 +129,8 @@ export function LoginScreen() {
 
   const visibleTabs = ROLE_TABS.filter(t => TAB_SETS[context].includes(t.k));
   const heading = context === "hire" ? "Sign in to hire" : "Sign in to continue";
-  const gridCols = visibleTabs.length === 2 ? "grid-cols-2" : "grid-cols-4";
+  const gridCols = visibleTabs.length === 2 ? "grid-cols-2" : "grid-cols-3";
+  const showTabs = visibleTabs.length > 1;
 
   function pickRole(k) {
     setRole(k);
@@ -156,15 +157,17 @@ export function LoginScreen() {
           </div>
           <div className="text-stone-500 text-sm">{heading}.</div>
         </div>
-        {/* Role tabs (count depends on entry context) */}
-        <div className={`grid ${gridCols} mb-6 border border-stone-200 rounded-xl overflow-hidden text-xs`}>
-          {visibleTabs.map(t => (
-            <button key={t.k} type="button" onClick={() => pickRole(t.k)}
-              className={`py-3 font-bold transition ${role === t.k ? "bg-yellow-400 text-black" : "bg-white text-stone-500 hover:bg-stone-50"}`}>
-              {t.l}
-            </button>
-          ))}
-        </div>
+        {/* Role tabs (hidden when there's only one tab in scope) */}
+        {showTabs && (
+          <div className={`grid ${gridCols} mb-6 border border-stone-200 rounded-xl overflow-hidden text-xs`}>
+            {visibleTabs.map(t => (
+              <button key={t.k} type="button" onClick={() => pickRole(t.k)}
+                className={`py-3 font-bold transition ${role === t.k ? "bg-yellow-400 text-black" : "bg-white text-stone-500 hover:bg-stone-50"}`}>
+                {t.l}
+              </button>
+            ))}
+          </div>
+        )}
         <div className="text-center text-xs text-stone-500 mb-5">{ROLE_TABS.find(t => t.k === role)?.desc}</div>
 
         <form onSubmit={submit} className="bg-white border border-stone-200 rounded-2xl p-6 space-y-4">
@@ -249,7 +252,7 @@ function PublicLanding({ onSignIn, onApplyAsTalent }) {
             <Zap className="text-amber-500 fill-amber-500" size={14} />
             <span>The Lighthouse · Talent</span>
           </div>
-          <button onClick={() => onSignIn("investor")} className="hover:text-amber-600">Investor sign in</button>
+          <button onClick={() => onSignIn()} className="hover:text-amber-600">Sign in</button>
         </div>
       </div>
     </div>

@@ -9,7 +9,10 @@ import {
   FileText, MessageSquare, Send, Plus, Eye, LogOut, Home, Database, KanbanSquare,
   AlertCircle, Coffee, Save, Edit3, ChevronsUpDown, RefreshCw, Globe,
 } from "lucide-react";
-import { CANDIDATES as RAW_CANDIDATES, COMPANIES, INVESTORS, SAVED_SEARCHES, SHORTLISTS, RESOURCES, INITIAL_INTRO_REQUESTS, DEMO_TALENT_CANDIDATE_ID } from "./data.js";
+// INVESTORS export remains in data.js (dormant schema) — intentionally NOT imported here.
+// To reactivate the investor portal, re-add to this import + restore the branches in
+// feature/investor-portal-v1.
+import { CANDIDATES as RAW_CANDIDATES, COMPANIES, SAVED_SEARCHES, SHORTLISTS, RESOURCES, INITIAL_INTRO_REQUESTS, DEMO_TALENT_CANDIDATE_ID } from "./data.js";
 import { AuthProvider, useAuth, LoginScreen } from "./auth.jsx";
 import { enrichFromLinkedIn, isStale } from "./lib/linkedinEnrich.js";
 
@@ -30,21 +33,63 @@ function _seededVettedDate(id) {
   const d = new Date(today.getTime() - daysBack * 86400000);
   return d.toISOString().slice(0, 10);
 }
+// Map legacy display-string vetting status → canonical snake_case enum per spec §4.
+// FOLLOW-UP: when wiring real persistence, the matching Supabase migration is:
+//   alter type candidate_status rename value 'New' to 'applied';
+//   alter type candidate_status rename value 'Reviewing' to 'reviewing';
+//   alter type candidate_status rename value 'Vetting Call Scheduled' to 'vetting_scheduled';
+//   alter type candidate_status rename value 'Active' to 'active';
+//   alter type candidate_status rename value 'Hidden' to 'hidden';
+//   alter type candidate_status rename value 'Declined' to 'archived';
+//   alter table candidates rename column vettingStatus to status;
+//   alter table candidates rename column linkedin to linkedin_url;
+//   alter table candidates add column linkedin_id text;
+//   alter table candidates add column admin_internal_status text;
+//   alter table candidates add column batch_id text;
+//   alter table candidates add column is_demo boolean default false;
+const STATUS_TO_ENUM = {
+  "New": "applied",
+  "Reviewing": "reviewing",
+  "Vetting Call Scheduled": "vetting_scheduled",
+  "Active": "active",
+  "Hidden": "hidden",
+  "Declined": "archived",
+};
+const STATUS_LABELS = {
+  pre_onboard: "Pre-onboarding",
+  applied: "New",
+  reviewing: "Reviewing",
+  vetting_scheduled: "Vetting Call Scheduled",
+  active: "Active",
+  hidden: "Hidden",
+  archived: "Archived",
+};
+const STATUS_ORDER = ["pre_onboard", "applied", "reviewing", "vetting_scheduled", "active", "hidden", "archived"];
+
 const CANDIDATES = RAW_CANDIDATES.map(c => {
   const vetted = _seededVetting(c.id);
+  const status = STATUS_TO_ENUM[c.vettingStatus] || "applied";
   return {
     ...c,
+    // Canonical spec fields per §4. Legacy `vettingStatus` + `linkedin` kept temporarily
+    // for any read-site we haven't migrated yet; new code should always use `status` + `linkedin_url`.
+    status,
+    linkedin_url: c.linkedin || null,
+    linkedin_id: null, // populated by Sign In with LinkedIn OAuth in production
+    admin_internal_status: c.roles || null, // legacy Airtable `roles` field → admin-internal annotation
+    batch_id: null, // populated by Bulk Import (deferred feature)
+    is_demo: false, // seed candidates default false; demo-only mock users would flip true
     vetted_in_person: vetted,
     vetted_at: vetted ? _seededVettedDate(c.id) : null,
     vetted_by: vetted ? "Zap" : null,
-    // LinkedIn fields. With Proxycurl shut down, enrichment is deferred — we just
-    // keep the shape so the UI can render whatever lands once a vendor is chosen.
+    // LinkedIn enrichment fields. Proxycurl shut down; enrichment is deferred —
+    // shape stays so the UI can render whatever lands once a vendor is chosen.
     linkedin_data: null,
     linkedin_data_last_updated: null,
     linkedin_data_source: null,
     linkedin_refresh_priority: "normal", // normal | high | frozen
     linkedin_verified: false, // true once the candidate completes Sign In with LinkedIn OAuth
-    intake_source: "Imported", // "LinkedIn OAuth" | "Manual entry" | "Imported"
+    intake_source: "imported", // "linkedin_oauth" | "manual_entry" | "imported"
   };
 });
 
@@ -92,11 +137,10 @@ function getWeeklyNote(week) {
   return week.weekly_note || week.curator_note || "";
 }
 
-// Sent for Review — Zap-pushed candidates landing on a company/investor's home dashboard.
+// Sent for Review — Zap-pushed candidates landing on a company's home dashboard.
 const INITIAL_SENT_FOR_REVIEW = [
   { id: "sr_1", candidate_id: _VETTED_IDS[0], sent_to_company_id: 5, sent_by: "Zap", sent_at: new Date(Date.now() - 2 * 86400000).toISOString().slice(0, 10), zap_note: "Met them at the Nashville founder dinner last week — exact match for your Head of Ops search.", status: "pending", response_at: null, response_reason: null },
   { id: "sr_2", candidate_id: _VETTED_IDS[1], sent_to_company_id: 5, sent_by: "Zap", sent_at: new Date(Date.now() - 5 * 86400000).toISOString().slice(0, 10), zap_note: "Coffee'd with them yesterday. Strong product judgment, ready for a Series A move.", status: "pending", response_at: null, response_reason: null },
-  { id: "sr_3", candidate_id: _VETTED_IDS[2], sent_to_investor_id: 1, sent_by: "Zap", sent_at: new Date(Date.now() - 1 * 86400000).toISOString().slice(0, 10), zap_note: "Would slot beautifully into one of your portcos that needs a Head of Marketing.", status: "pending", response_at: null, response_reason: null },
 ];
 
 // Find the current week's featured set from the persisted list.
@@ -325,7 +369,8 @@ function LinkedInVerifiedBadge({ candidate, size = 12 }) {
 // ============================================================
 function filterCandidates(filters, candidates) {
   return candidates.filter(c => {
-    if (c.vettingStatus !== "Active" || c.declined) return false;
+    // Only surface active candidates to companies — hidden/archived/pre-onboarding stay invisible.
+    if (c.status !== "active" || c.declined) return false;
     // vetted-in-person (premium quality gate)
     if (filters.vettedOnly && !c.vetted_in_person) return false;
     // role
@@ -397,11 +442,10 @@ function AuthedApp() {
 }
 
 // Demo-mode synthetic users so the ModeSwitcher can impersonate any role
-// without making the user log out and back in.
+// without making the user log out and back in. Investor mode removed per strip handoff.
 const DEMO_USERS = {
   talent: { email: "talent@lt.house", role: "talent", name: "Eliana Eskinazi", candidateId: DEMO_TALENT_CANDIDATE_ID },
   company: { email: "company@lt.house", role: "company", name: "SoundHealth", companyId: 5 },
-  investor: { email: "investor@lt.house", role: "investor", name: "Overline VC", investorId: 1 },
   admin: { email: "zap@lt.house", role: "admin", name: "Zap" },
 };
 
@@ -413,7 +457,7 @@ function SignedInShell({ user, logout }) {
     <>
       <div key={role}>
         {role === "talent" && <TalentIntakeFlow user={effectiveUser} logout={logout} />}
-        {(role === "company" || role === "investor") && <CompanyPortal user={effectiveUser} logout={logout} />}
+        {role === "company" && <CompanyPortal user={effectiveUser} logout={logout} />}
         {role === "admin" && <AdminPortal user={effectiveUser} logout={logout} />}
       </div>
       <ModeSwitcher mode={mode} setMode={setMode} signedInEmail={user.email} logout={logout} />
@@ -427,7 +471,6 @@ function ModeSwitcher({ mode, setMode, signedInEmail, logout }) {
   const modes = [
     { k: "talent", label: "Talent", desc: "Candidate intake flow" },
     { k: "company", label: "Company", desc: "Hire from the network" },
-    { k: "investor", label: "Investor", desc: "Company portal + portco tag" },
     { k: "admin", label: "Admin", desc: "Database, vetting, intro queue" },
   ];
   const current = modes.find(m => m.k === mode);
@@ -488,7 +531,6 @@ function TalentIntakeFlow({ user, logout }) {
     hasStartupExperience: null,
     hasTechExperience: null,
     currentRole: "", currentCompany: "", skills: [],
-    hiddenFromCompanies: [],
   });
   function update(patch) { setProfile(p => ({ ...p, ...patch })); }
   function next() { setStep(s => s + 1); }
@@ -559,7 +601,7 @@ function TalentLinkedIn({ profile, update, onNext, onBack }) {
       update({
         linkedinConnected: true,
         linkedin_verified: true,
-        intake_source: "LinkedIn OAuth",
+        intake_source: "linkedin_oauth",
         firstName: profile.firstName || first || "Demo",
         lastName: profile.lastName || rest.join(" ") || "Candidate",
       });
@@ -671,16 +713,6 @@ function TalentBasics({ profile, update, onSubmit, onBack }) {
             )}
           </Field>
         </div>
-        <div className="border-t border-stone-200 pt-4">
-          <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-3">Privacy <span className="ml-1 normal-case text-stone-400 font-normal">— optional</span></div>
-          <Field label="Hide my profile from any companies?" hint="They won't see your profile or be able to request an intro. Add current employer, competitors, anyone.">
-            <ChipInput
-              value={profile.hiddenFromCompanies}
-              onChange={v => update({ hiddenFromCompanies: v })}
-              placeholder="Type a company and press Enter"
-            />
-          </Field>
-        </div>
       </Card>
       <div className="flex justify-between pt-2">
         <Button variant="ghost" icon={ChevronLeft} onClick={onBack}>Back</Button>
@@ -690,50 +722,8 @@ function TalentBasics({ profile, update, onSubmit, onBack }) {
   );
 }
 
-// Comma/Enter-separated chip input. Free-text — no autocomplete against a backend
-// list because the talent might name companies we don't know about yet.
-function ChipInput({ value = [], onChange, placeholder }) {
-  const [draft, setDraft] = useState("");
-  function add(raw) {
-    const next = raw.split(",").map(s => s.trim()).filter(Boolean);
-    if (next.length === 0) return;
-    const merged = [...value];
-    next.forEach(n => { if (!merged.includes(n)) merged.push(n); });
-    onChange(merged);
-    setDraft("");
-  }
-  function remove(idx) {
-    const copy = [...value];
-    copy.splice(idx, 1);
-    onChange(copy);
-  }
-  function keyDown(e) {
-    if (e.key === "Enter" || e.key === ",") { e.preventDefault(); add(draft); }
-    else if (e.key === "Backspace" && !draft && value.length > 0) { remove(value.length - 1); }
-  }
-  return (
-    <div className="w-full bg-white border border-stone-300 rounded-lg px-2.5 py-2 text-sm focus-within:border-black">
-      <div className="flex flex-wrap gap-1.5 items-center">
-        {value.map((c, i) => (
-          <span key={c + i} className="inline-flex items-center gap-1 bg-stone-100 border border-stone-300 rounded-full pl-2.5 pr-1 py-0.5 text-xs">
-            {c}
-            <button type="button" onClick={() => remove(i)} className="text-stone-400 hover:text-black w-4 h-4 flex items-center justify-center"><X size={11} /></button>
-          </span>
-        ))}
-        <input
-          value={draft}
-          onChange={e => setDraft(e.target.value)}
-          onKeyDown={keyDown}
-          onBlur={() => draft.trim() && add(draft)}
-          placeholder={value.length === 0 ? placeholder : ""}
-          className="flex-1 min-w-[140px] bg-transparent outline-none py-1"
-        />
-      </div>
-    </div>
-  );
-}
-
 // Drag-to-rank motivations step removed. Intake is now LinkedIn → Essentials → Confirmation.
+// Hide-from-companies chip input + ChipInput component removed — field was dead data.
 
 function TalentConfirmation({ profile, onExit }) {
   const [newsletterEmail, setNewsletterEmail] = useState(profile.email || "");
@@ -788,7 +778,6 @@ const DEFAULT_FILTERS = {
 };
 
 function CompanyPortal({ user, logout }) {
-  const investor = user.role === "investor" ? INVESTORS.find(i => i.email === user.email) || INVESTORS[0] : null;
   const [tab, setTab] = useState("home");
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [nlQuery, setNlQuery] = useState("");
@@ -801,9 +790,9 @@ function CompanyPortal({ user, logout }) {
   // Browser back/swipe-back: clear the candidate profile + intro modal first; don't leave the site.
   useBackHandler(!!activeCandidateId, () => setActiveCandidateId(null));
   useBackHandler(!!showIntroModal, () => setShowIntroModal(null));
-  const [searches, setSearches] = useState(SAVED_SEARCHES.filter(s => investor ? s.companyId === -investor.id : s.companyId === (user.companyId || 5)));
-  const [shortlists, setShortlists] = useState(SHORTLISTS.filter(s => investor ? s.companyId === -investor.id : s.companyId === (user.companyId || 5)));
-  const [portcoTag, setPortcoTag] = useState(null); // for investor users
+  const myCompanyId = user.companyId || 5;
+  const [searches, setSearches] = useState(SAVED_SEARCHES.filter(s => s.companyId === myCompanyId));
+  const [shortlists, setShortlists] = useState(SHORTLISTS.filter(s => s.companyId === myCompanyId));
   const [introRequests, setIntroRequests] = useState(() => {
     if (typeof window !== "undefined") {
       const w = window.__lt_intro_requests; if (w) return w;
@@ -829,11 +818,8 @@ function CompanyPortal({ user, logout }) {
     return () => clearInterval(t);
   }, []);
 
-  // Filter sent_for_review to this viewer (company or investor)
-  const myReviewQueue = sentForReview.filter(r => {
-    if (investor) return r.sent_to_investor_id === investor.id;
-    return r.sent_to_company_id === (user.companyId || 5);
-  });
+  // Filter sent_for_review to this company viewer.
+  const myReviewQueue = sentForReview.filter(r => r.sent_to_company_id === myCompanyId);
   function respondToReview(reviewId, status, reason) {
     const next = sentForReview.map(r => r.id === reviewId ? { ...r, status, response_at: new Date().toISOString().slice(0, 10), response_reason: reason || null } : r);
     setSentForReview(next);
@@ -868,8 +854,7 @@ function CompanyPortal({ user, logout }) {
     if (!name) return;
     const record = {
       id: Date.now(),
-      companyId: investor ? -investor.id : (user.companyId || 5),
-      investorPortco: portcoTag,
+      companyId: myCompanyId,
       name,
       kind: usedAdvanced ? "advanced" : "filter",
       query: usedAdvanced ? nlQuery : undefined,
@@ -886,8 +871,8 @@ function CompanyPortal({ user, logout }) {
       id: Date.now(),
       candidateId,
       requesterEmail: user.email,
-      requesterName: investor ? investor.name : "Company User",
-      portcoTag: investor ? portcoTag : null,
+      requesterName: user.name || "Company User",
+      portcoTag: null,
       reason,
       status: "pending",
       submittedAt: new Date().toISOString(),
@@ -913,7 +898,7 @@ function CompanyPortal({ user, logout }) {
             <button onClick={() => setTab("home")} className="flex items-center gap-2 hover:text-amber-600">
               <Zap className="text-amber-500 fill-amber-500" size={18} />
               <span className="font-display tracking-tight font-bold">Lighthouse</span>
-              <span className="text-stone-500 text-xs">{investor ? "Investor" : "Hire"}</span>
+              <span className="text-stone-500 text-xs">Hire</span>
             </button>
             <nav className="hidden md:flex items-center gap-1">
               {[
@@ -931,16 +916,6 @@ function CompanyPortal({ user, logout }) {
             </nav>
           </div>
           <div className="flex items-center gap-3">
-            {investor && (
-              <div className="flex items-center gap-2 bg-yellow-50 border border-yellow-300 rounded-full pl-3 pr-1 py-1">
-                <span className="text-[10px] uppercase tracking-wider font-bold text-amber-800">Searching for</span>
-                <select value={portcoTag || ""} onChange={e => setPortcoTag(e.target.value || null)}
-                  className="bg-transparent text-xs font-bold focus:outline-none pr-2 py-1">
-                  <option value="">Direct</option>
-                  {investor.portcos.map(p => <option key={p} value={p}>{p}</option>)}
-                </select>
-              </div>
-            )}
             <Button variant="ghost" size="sm" icon={LogOut} onClick={logout}>Exit</Button>
           </div>
         </div>
@@ -954,8 +929,6 @@ function CompanyPortal({ user, logout }) {
             {tab === "home" && (
               <HomeDashboard
                 user={user}
-                investor={investor}
-                portcoTag={portcoTag}
                 reviewQueue={myReviewQueue}
                 featuredWeeks={featuredWeeks}
                 searches={searches}
@@ -984,7 +957,7 @@ function CompanyPortal({ user, logout }) {
               />
             )}
             {tab === "searches" && <MySearchesView searches={searches} setSearches={setSearches} onRunSearch={loadSearch} onNewSearch={() => setTab("search")} />}
-            {tab === "shortlists" && <ShortlistsView shortlists={shortlists} setShortlists={setShortlists} onOpenCandidate={(id) => setActiveCandidateId(id)} investorAware={!!investor} />}
+            {tab === "shortlists" && <ShortlistsView shortlists={shortlists} setShortlists={setShortlists} onOpenCandidate={(id) => setActiveCandidateId(id)} />}
             {tab === "resources" && <ResourcesView />}
           </>
         )}
@@ -992,7 +965,7 @@ function CompanyPortal({ user, logout }) {
       {showIntroModal && (
         <IntroRequestModal
           candidate={CANDIDATES.find(c => c.id === showIntroModal)}
-          requesterName={investor ? investor.name : "Company"}
+          requesterName={user.name || "Company"}
           onClose={() => setShowIntroModal(null)}
           onSubmit={(reason) => submitIntroRequest(showIntroModal, reason)}
         />
@@ -1002,13 +975,12 @@ function CompanyPortal({ user, logout }) {
 }
 
 // ============================================================
-// HOME DASHBOARD — company + investor landing page
+// HOME DASHBOARD — company landing page
 // Layout: banner + grid pattern. Three sections (Sent for Review row, Featured grid,
 // Quick Access dual-column), each with parity in section-header treatment + dividers.
 // ============================================================
-function HomeDashboard({ user, investor, portcoTag, reviewQueue, featuredWeeks, searches, shortlists, onOpenCandidate, onRespondReview, onRequestIntro, onGoSearch, onLoadSearch, onOpenShortlist }) {
-  const investorSubtitle = investor ? (portcoTag ? `Searching for ${portcoTag}` : "Searching directly") : null;
-  const greetingName = investor ? investor.name : (user.name || "team");
+function HomeDashboard({ user, reviewQueue, featuredWeeks, searches, shortlists, onOpenCandidate, onRespondReview, onRequestIntro, onGoSearch, onLoadSearch, onOpenShortlist }) {
+  const greetingName = user.name || "team";
   const sortedQueue = [...reviewQueue].sort((a, b) => b.sent_at.localeCompare(a.sent_at));
   const currentWeek = getCurrentFeatured(featuredWeeks);
   const weeklyNote = getWeeklyNote(currentWeek);
@@ -1033,7 +1005,6 @@ function HomeDashboard({ user, investor, portcoTag, reviewQueue, featuredWeeks, 
       {/* Welcome banner */}
       <div className="mb-8">
         <h1 className="font-display text-4xl leading-tight">Welcome back, {greetingName}.</h1>
-        {investorSubtitle && <div className="text-stone-500 text-sm mt-1">{investorSubtitle}</div>}
       </div>
 
       {/* SECTION 1: Featured this week — endless carousel of every candidate ever featured */}
@@ -1692,7 +1663,7 @@ function MySearchesView({ searches, setSearches, onRunSearch, onNewSearch }) {
               <tr key={s.id} className="border-b border-stone-200 hover:bg-stone-50 cursor-pointer" onClick={() => onRunSearch(s)}>
                 <td className="p-3 font-bold">{s.name}</td>
                 <td className="p-3"><Tag size="sm" color={s.kind === "advanced" ? "purple" : "yellow"}>{s.kind === "advanced" ? "Advanced" : "Filter"}</Tag></td>
-                <td className="p-3 text-xs text-stone-500 hidden sm:table-cell">{s.investorPortco || "Direct"}</td>
+                <td className="p-3 text-xs text-stone-500 hidden sm:table-cell">Direct</td>
                 <td className="p-3 text-xs text-stone-500 hidden md:table-cell">{s.createdAt}</td>
                 <td className="p-3 text-sm tabular-nums">{s.results || "—"}</td>
                 <td className="p-3 text-right">
@@ -1708,7 +1679,7 @@ function MySearchesView({ searches, setSearches, onRunSearch, onNewSearch }) {
   );
 }
 
-function ShortlistsView({ shortlists, setShortlists, onOpenCandidate, investorAware }) {
+function ShortlistsView({ shortlists, setShortlists, onOpenCandidate }) {
   const [active, setActive] = useState(null);
   if (active) {
     const sl = shortlists.find(s => s.id === active);
@@ -1747,7 +1718,6 @@ function ShortlistsView({ shortlists, setShortlists, onOpenCandidate, investorAw
         {shortlists.map(s => (
           <Card key={s.id} onClick={() => setActive(s.id)}>
             <div className="font-bold text-lg">{s.name}</div>
-            {investorAware && s.investorPortco && <div className="text-xs text-amber-600 font-bold mt-0.5">For {s.investorPortco}</div>}
             <div className="text-xs text-stone-500 mt-1">{s.candidateIds.length} candidates · {s.createdAt}</div>
           </Card>
         ))}
@@ -1889,11 +1859,13 @@ function AdminPortal({ user, logout }) {
     setIntroRequests(next);
     if (typeof window !== "undefined") window.__lt_intro_requests = next;
   }
-  function sendForReview({ candidate_id, recipientKind, recipientId, zap_note }) {
+  function sendForReview({ candidate_id, recipientId, zap_note }) {
+    // Companies-only post investor strip. recipientKind kept in modal signature
+    // for forward compat but unused here.
     const rec = {
       id: "sr_" + Date.now(),
       candidate_id,
-      [recipientKind === "investor" ? "sent_to_investor_id" : "sent_to_company_id"]: recipientId,
+      sent_to_company_id: recipientId,
       sent_by: user.name || "Zap",
       sent_at: new Date().toISOString().slice(0, 10),
       zap_note,
@@ -1980,7 +1952,7 @@ function AdminDatabase({ candidates, onOpen }) {
   const [search, setSearch] = useState("");
   const filtered = useMemo(() => {
     return candidates.filter(c => {
-      if (filterStatus !== "all" && c.vettingStatus !== filterStatus) return false;
+      if (filterStatus !== "all" && c.status !== filterStatus) return false;
       if (search) {
         const s = search.toLowerCase();
         return (c.firstName + " " + c.lastName + " " + c.currentRole + " " + c.currentLocation).toLowerCase().includes(s);
@@ -1999,7 +1971,7 @@ function AdminDatabase({ candidates, onOpen }) {
         <div className="flex gap-2">
           <Input placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} className="text-xs w-48" />
           <Select value={filterStatus} onChange={setFilterStatus} className="text-xs w-auto"
-            options={[{ value: "all", label: "All statuses" }, { value: "Active", label: "Active" }, { value: "New", label: "New" }, { value: "Reviewing", label: "Reviewing" }, { value: "Vetting Call Scheduled", label: "Vetting" }, { value: "Hidden", label: "Hidden" }, { value: "Declined", label: "Declined" }]} />
+            options={[{ value: "all", label: "All statuses" }, ...STATUS_ORDER.filter(s => s !== "pre_onboard").map(s => ({ value: s, label: STATUS_LABELS[s] }))]} />
         </div>
       </div>
       <Card padded={false}>
@@ -2026,7 +1998,7 @@ function AdminDatabase({ candidates, onOpen }) {
                   <td className="p-3 text-xs text-stone-500">{c.currentLocation} <span className="text-[10px] block">{RELOCATION_LABELS[c.relocationStatus]}</span></td>
                   <td className="p-3 text-center">{c.hasTechExperience ? "✓" : "—"}</td>
                   <td className="p-3 text-center">{c.hasStartupExperience ? "✓" : "—"}</td>
-                  <td className="p-3"><Tag color={c.vettingStatus === "Active" ? "green" : c.vettingStatus === "Declined" ? "red" : "yellow"} size="sm">{c.vettingStatus}</Tag></td>
+                  <td className="p-3"><Tag color={c.status === "active" ? "green" : c.status === "archived" ? "red" : "yellow"} size="sm">{STATUS_LABELS[c.status] || c.status}</Tag></td>
                   <td className="p-3 text-center tabular-nums">{c.introRequests || 0}</td>
                 </tr>
               ))}
@@ -2040,8 +2012,10 @@ function AdminDatabase({ candidates, onOpen }) {
 }
 
 function AdminPending({ candidates, onOpen, updateCandidate }) {
-  const cols = ["New", "Reviewing", "Vetting Call Scheduled", "Active", "Declined"];
-  const labels = { "New": "New", "Reviewing": "Reviewing", "Vetting Call Scheduled": "Vetting Call", "Active": "Approved", "Declined": "Declined" };
+  // Pipeline columns use canonical status enum. Display label for "active" is "Approved"
+  // in this view (vs. "Active" in the database table view) — per spec.
+  const cols = ["applied", "reviewing", "vetting_scheduled", "active", "archived"];
+  const labels = { applied: "New", reviewing: "Reviewing", vetting_scheduled: "Vetting Call", active: "Approved", archived: "Declined" };
   const [drag, setDrag] = useState(null);
   return (
     <div>
@@ -2049,11 +2023,11 @@ function AdminPending({ candidates, onOpen, updateCandidate }) {
       <div className="text-xs text-stone-500 mb-4">Drag candidates through the pipeline. Click a card for the full admin profile.</div>
       <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
         {cols.map(col => {
-          const list = candidates.filter(c => c.vettingStatus === col);
+          const list = candidates.filter(c => c.status === col);
           return (
             <div key={col}
               onDragOver={e => e.preventDefault()}
-              onDrop={() => { if (drag) { updateCandidate(drag, { vettingStatus: col }); setDrag(null); } }}
+              onDrop={() => { if (drag) { updateCandidate(drag, { status: col }); setDrag(null); } }}
               className="bg-stone-50 border border-stone-200 rounded-xl p-3 min-h-[300px]">
               <div className="flex items-center justify-between mb-3">
                 <div className="text-xs uppercase tracking-wider font-bold">{labels[col]}</div>
@@ -2081,14 +2055,14 @@ function AdminPending({ candidates, onOpen, updateCandidate }) {
 function AdminCandidateProfile({ candidate, updateCandidate, onBack, sendForReview }) {
   if (!candidate) return null;
   const [notes, setNotes] = useState(candidate.adminNotes || "");
-  const [vetting, setVetting] = useState(candidate.vettingStatus);
+  const [vetting, setVetting] = useState(candidate.status);
   const [showSendModal, setShowSendModal] = useState(false);
   const [enriching, setEnriching] = useState(false);
-  function save() { updateCandidate(candidate.id, { adminNotes: notes, vettingStatus: vetting }); alert("Saved."); }
+  function save() { updateCandidate(candidate.id, { adminNotes: notes, status: vetting }); alert("Saved."); }
   async function enrichNow() {
     setEnriching(true);
     try {
-      const payload = await enrichFromLinkedIn(candidate.linkedin || "https://www.linkedin.com/in/demo-user/");
+      const payload = await enrichFromLinkedIn(candidate.linkedin_url || "https://www.linkedin.com/in/demo-user/");
       updateCandidate(candidate.id, {
         linkedin_data: payload,
         linkedin_data_last_updated: new Date().toISOString(),
@@ -2120,11 +2094,11 @@ function AdminCandidateProfile({ candidate, updateCandidate, onBack, sendForRevi
             <div className="text-xs text-stone-500 mt-1 flex flex-wrap gap-3">
               <span><Mail size={11} className="inline mr-0.5" /> {candidate.email}</span>
               <span><Phone size={11} className="inline mr-0.5" /> {candidate.phone}</span>
-              {candidate.linkedin ? (
-                <a href={candidate.linkedin} target="_blank" rel="noreferrer" title={candidate.linkedin}
+              {candidate.linkedin_url ? (
+                <a href={candidate.linkedin_url} target="_blank" rel="noreferrer" title={candidate.linkedin_url}
                   className="inline-flex items-center gap-1 text-[#0a66c2] hover:underline max-w-[260px] truncate">
                   <Linkedin size={11} className="flex-shrink-0" />
-                  <span className="truncate">{candidate.linkedin.replace(/^https?:\/\/(www\.)?/, "")}</span>
+                  <span className="truncate">{candidate.linkedin_url.replace(/^https?:\/\/(www\.)?/, "")}</span>
                 </a>
               ) : (
                 <span className="inline-flex items-center gap-1 text-rose-700 bg-rose-50 border border-rose-200 rounded-full px-2 py-0.5">
@@ -2163,7 +2137,8 @@ function AdminCandidateProfile({ candidate, updateCandidate, onBack, sendForRevi
           </Card>
           <Card>
             <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-2">Vetting status</div>
-            <Select value={vetting} onChange={setVetting} options={["New", "Reviewing", "Vetting Call Scheduled", "Active", "Hidden", "Declined"]} />
+            <Select value={vetting} onChange={setVetting}
+              options={STATUS_ORDER.filter(s => s !== "pre_onboard").map(s => ({ value: s, label: STATUS_LABELS[s] }))} />
           </Card>
           <Card className={candidate.vetted_in_person ? "border-amber-400 bg-amber-50/60" : ""}>
             <div className="flex items-center justify-between gap-3">
@@ -2236,7 +2211,7 @@ function AdminIntroRequests({ requests, onOpen, user }) {
                 <div className="flex items-center gap-2 flex-wrap">
                   <div className="font-bold flex items-center gap-1.5">{c.firstName} {c.lastName} <VettedBadge candidate={c} size={12} /></div>
                   <Tag size="sm">←</Tag>
-                  <div className="text-sm">{r.requesterName}{r.portcoTag && <span className="text-amber-600"> · {r.portcoTag}</span>}</div>
+                  <div className="text-sm">{r.requesterName}</div>
                   <Tag color={r.status === "pending" ? "yellow" : r.status === "introd" ? "green" : "default"}>{r.status}</Tag>
                 </div>
                 <div className="text-xs text-stone-500 mt-0.5">{new Date(r.submittedAt).toLocaleString()}</div>
@@ -2254,35 +2229,56 @@ function AdminIntroRequests({ requests, onOpen, user }) {
 function AdminIntroDetail({ intro, onBack, onApprove, onDecline, user }) {
   const c = CANDIDATES.find(cn => cn.id === intro.candidateId);
   const [emailBody, setEmailBody] = useState("");
+  const [emailSubject, setEmailSubject] = useState("");
+  const [recipientContact, setRecipientContact] = useState("");
   const [showEmail, setShowEmail] = useState(false);
   const [declineNote, setDeclineNote] = useState("");
   const [showDecline, setShowDecline] = useState(false);
   // Approver gating — for MVP, only zap@lt.house can approve. (Settings flag to expand later.)
   const approverFlag = (typeof window !== "undefined" && window.__lt_approver_role) || "zap_only";
   const isApprover = user.email === "zap@lt.house" || (approverFlag === "zap_and_mike" && user.email === "mike@lt.house");
+  // Outbound emails master toggle (Settings → Settings). Default DISABLED in MVP per Core Principle #1.
+  const outboundEnabled = (typeof window !== "undefined" && window.__lt_outbound_emails) === "enabled";
 
   function openEmailDraft() {
-    const draft =
+    // Spec §3.5 — templated intro email, editable before mock-send.
+    // The candidate LinkedIn URL is injected here — the *only* place company-side
+    // users ever receive it (anti-poaching gating).
+    const linkedin = c.linkedin_url || "(LinkedIn URL missing — verify before sending)";
+    setEmailSubject(`Intro: ${intro.requesterName} ↔ ${c.firstName} ${c.lastName}`);
+    setRecipientContact(intro.requesterEmail || "{company contact email}");
+    setEmailBody(
 `Hi {Company Contact} and ${c.firstName},
 
 I'd love to connect you two.
 
-${intro.requesterName}${intro.portcoTag ? ` (looking on behalf of ${intro.portcoTag})` : ""} is looking for someone with this profile. Here's the context they shared:
+${intro.requesterName} is looking for someone with this profile. Here's the context they shared:
 
 "${intro.reason}"
 
 ${c.firstName}, I think you'd be a great fit because [Zap fills this in].
 
+For quick reference:
+  • ${c.firstName} ${c.lastName}
+  • ${c.currentRole}${c.currentCompany ? ` · ${c.currentCompany}` : ""}
+  • LinkedIn: ${linkedin}
+
 I'll let you both take it from here — let me know how it goes!
 
-— Zap`;
-    setEmailBody(draft);
+— Zap`
+    );
     setShowEmail(true);
   }
   function sendIntro() {
+    // Mock-send. Real send wires to a Supabase Edge Function once Lorenzo flips
+    // the master toggle (see docs/supabase-migrations.md §5).
     onApprove();
     setShowEmail(false);
-    alert("Intro email queued (mock-send).");
+    if (outboundEnabled) {
+      alert(`Intro email mock-sent to ${recipientContact} + ${c.email || c.firstName.toLowerCase()}@…`);
+    } else {
+      alert("Intro queued. Outbound emails are DISABLED in Settings — flip the master toggle to actually fire.");
+    }
   }
   function confirmDecline() {
     onDecline(declineNote);
@@ -2308,7 +2304,6 @@ I'll let you both take it from here — let me know how it goes!
           <div>
             <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-1">Requester</div>
             <div className="font-bold">{intro.requesterName}</div>
-            {intro.portcoTag && <div className="text-xs text-amber-600">Searching for {intro.portcoTag}</div>}
             <div className="text-xs text-stone-500">{intro.requesterEmail}</div>
           </div>
         </div>
@@ -2339,18 +2334,39 @@ I'll let you both take it from here — let me know how it goes!
       {showEmail && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setShowEmail(false)}>
           <div onClick={e => e.stopPropagation()} className="bg-white rounded-2xl p-6 max-w-2xl w-full max-h-[85vh] overflow-y-auto">
-            <h2 className="font-display text-2xl mb-3">Send intro email</h2>
-            <Field label="From" hint="Editable in production. For MVP, all sent from this address.">
-              <Input value="zap@lt.house" readOnly className="bg-stone-50" />
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <h2 className="font-display text-2xl">Send intro email</h2>
+              <button onClick={() => setShowEmail(false)} className="text-stone-500 hover:text-black"><X size={18} /></button>
+            </div>
+            {!outboundEnabled && (
+              <div className="mb-4 text-xs text-stone-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 flex items-start gap-2">
+                <Mail size={14} className="text-amber-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <strong>Outbound emails DISABLED.</strong> This send will be queued and recorded as Intro'd, but no real email fires. Flip the master toggle in Settings to go live.
+                </div>
+              </div>
+            )}
+            <div className="grid sm:grid-cols-2 gap-3">
+              <Field label="From">
+                <Input value="zap@lt.house" readOnly className="bg-stone-50" />
+              </Field>
+              <Field label="To (company contact)" required>
+                <Input value={recipientContact} onChange={e => setRecipientContact(e.target.value)} />
+              </Field>
+            </div>
+            <div className="h-3" />
+            <Field label="Subject" required>
+              <Input value={emailSubject} onChange={e => setEmailSubject(e.target.value)} />
             </Field>
             <div className="h-3" />
-            <Field label="Email body" required>
+            <Field label="Email body" required hint="Replace bracketed sections before sending. Candidate's LinkedIn URL is included automatically — this is the only place companies receive it.">
               <Textarea rows={14} value={emailBody} onChange={e => setEmailBody(e.target.value)} className="font-mono text-xs" />
             </Field>
-            <div className="text-xs text-stone-500 mt-2">Replace bracketed sections before sending. Mock-send only in MVP — no real email will fire.</div>
             <div className="flex justify-end gap-2 mt-4">
               <Button variant="ghost" onClick={() => setShowEmail(false)}>Cancel</Button>
-              <Button icon={Send} onClick={sendIntro}>Send (mock)</Button>
+              <Button icon={Send} onClick={sendIntro} disabled={!emailBody.trim() || !recipientContact.trim()}>
+                {outboundEnabled ? "Send intro" : "Queue intro (mock)"}
+              </Button>
             </div>
           </div>
         </div>
@@ -2375,8 +2391,11 @@ I'll let you both take it from here — let me know how it goes!
 }
 
 function AdminSettings() {
-  const [outboundEmailMode, setOutboundEmailMode] = useState("disabled");
+  const [outboundEmailMode, setOutboundEmailMode] = useState(() => (typeof window !== "undefined" && window.__lt_outbound_emails) || "disabled");
   const [approverRole, setApproverRole] = useState("zap_only");
+  // Publish to window globals so AdminIntroDetail (and any future email site) can gate sends.
+  // Per Core Principle #1 — every email trigger must check this toggle.
+  useEffect(() => { if (typeof window !== "undefined") window.__lt_outbound_emails = outboundEmailMode; }, [outboundEmailMode]);
   useEffect(() => { if (typeof window !== "undefined") window.__lt_approver_role = approverRole; }, [approverRole]);
   return (
     <div className="space-y-4 max-w-3xl">
@@ -2644,9 +2663,11 @@ function AdminSentForReview({ records, candidates }) {
         {sorted.map(r => {
           const c = candidates.find(c => c.id === r.candidate_id);
           if (!c) return null;
+          // Legacy investor-recipient records may still exist in window-global state.
+          // Render them as "Investor (legacy)" without trying to resolve the dormant lookup.
           const recipient = r.sent_to_company_id
             ? (COMPANIES.find(co => co.id === r.sent_to_company_id)?.name || `Company #${r.sent_to_company_id}`)
-            : (INVESTORS.find(i => i.id === r.sent_to_investor_id)?.name || `Investor #${r.sent_to_investor_id}`);
+            : "Investor (legacy record)";
           return (
             <div key={r.id} className="border-b border-stone-200 p-4 flex items-start gap-3 flex-wrap">
               <Avatar candidate={c} size={36} />
@@ -2673,7 +2694,7 @@ function AdminSentForReview({ records, candidates }) {
 // ADMIN: Send-for-review modal — blocks send if candidate isn't vetted
 // ============================================================
 function SendForReviewModal({ candidate, onClose, onSend }) {
-  const [recipientKind, setRecipientKind] = useState("company");
+  // Companies-only per investor strip handoff. recipientKind is hardcoded.
   const [recipientId, setRecipientId] = useState(COMPANIES[0]?.id || "");
   const [zapNote, setZapNote] = useState("");
   const isVetted = !!candidate.vetted_in_person;
@@ -2690,16 +2711,10 @@ function SendForReviewModal({ candidate, onClose, onSend }) {
           </div>
         ) : (
           <>
-            <p className="text-sm text-stone-500 mb-4">Zap-curated push to a company or investor. They'll see this on their home dashboard immediately.</p>
-            <Field label="Send to" required>
-              <div className="flex gap-2 mb-2">
-                {[["company", "Company"], ["investor", "Investor"]].map(([k, l]) => (
-                  <button key={k} type="button" onClick={() => { setRecipientKind(k); setRecipientId(k === "company" ? COMPANIES[0]?.id : INVESTORS[0]?.id); }}
-                    className={`flex-1 px-3 py-1.5 text-sm rounded-lg border ${recipientKind === k ? "bg-yellow-400 border-yellow-400 font-bold" : "bg-white border-stone-300"}`}>{l}</button>
-                ))}
-              </div>
+            <p className="text-sm text-stone-500 mb-4">Zap-curated push to a company. They'll see this on their home dashboard immediately.</p>
+            <Field label="Send to company" required>
               <Select value={recipientId} onChange={v => setRecipientId(+v)}
-                options={(recipientKind === "company" ? COMPANIES : INVESTORS).map(r => ({ value: r.id, label: r.name }))} />
+                options={COMPANIES.map(r => ({ value: r.id, label: r.name }))} />
             </Field>
             <div className="h-3" />
             <Field label="Why are you sending this candidate?" required hint="One paragraph. Specific match, what the recipient cares about.">
@@ -2707,7 +2722,7 @@ function SendForReviewModal({ candidate, onClose, onSend }) {
             </Field>
             <div className="flex justify-end gap-2 mt-4">
               <Button variant="ghost" onClick={onClose}>Cancel</Button>
-              <Button icon={Send} disabled={!zapNote.trim() || !recipientId} onClick={() => onSend({ recipientKind, recipientId, zap_note: zapNote.trim() })}>Send for review</Button>
+              <Button icon={Send} disabled={!zapNote.trim() || !recipientId} onClick={() => onSend({ recipientKind: "company", recipientId, zap_note: zapNote.trim() })}>Send for review</Button>
             </div>
           </>
         )}
