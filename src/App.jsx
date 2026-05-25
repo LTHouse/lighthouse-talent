@@ -1553,35 +1553,52 @@ function CandidateProfile({ candidate, onBack, onRequestIntro }) {
       <div className="grid md:grid-cols-3 gap-4">
         <div className="md:col-span-2 space-y-4">
           <Card>
-            <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-3 flex items-center justify-between">
-              <span>Background</span>
-              {candidate.linkedin_data && <span className="inline-flex items-center gap-1 text-[10px] text-amber-700 normal-case font-normal tracking-normal"><Linkedin size={10} /> Live LinkedIn data</span>}
+            <div className="text-xs uppercase tracking-wider text-stone-500 font-bold mb-3">Background</div>
+            {/* First item: identity verification badge (company view — no clickable URL per anti-poaching) */}
+            <div className="mb-4">
+              {candidate.linkedin_verified ? (
+                <span className="inline-flex items-center gap-1.5 text-xs text-stone-700 bg-stone-50 border border-stone-200 rounded-full px-2.5 py-1">
+                  <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-[#0a66c2] text-white"><Linkedin size={9} /></span>
+                  LinkedIn Verified <CheckCircle2 size={11} className="text-emerald-600" />
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 text-xs text-stone-500 bg-stone-50 border border-stone-200 rounded-full px-2.5 py-1">
+                  <Linkedin size={11} /> LinkedIn not yet verified
+                </span>
+              )}
             </div>
-            <div className="font-bold mb-2 text-sm">Work history</div>
-            <div className="space-y-2 mb-4">
-              {(candidate.linkedin_data?.experiences || candidate.workHistory).map((w, i) => {
-                // Normalize shape — Proxycurl uses `experiences` with starts_at/ends_at, our seed uses workHistory.
-                const title = w.title;
-                const company = w.company;
-                const start = w.starts_at?.year || w.startYear;
-                const end = w.ends_at?.year || w.endYear || (w.starts_at && !w.ends_at ? "Present" : null);
-                return (
-                  <div key={i} className="border-l-2 border-stone-200 pl-3">
-                    <div className="font-semibold text-sm">{title}</div>
-                    <div className="text-stone-500 text-xs">{company}{start ? ` · ${start}${end && end !== start ? `–${end}` : ""}` : ""}</div>
-                  </div>
-                );
-              })}
-            </div>
-            <div className="font-bold mb-2 text-sm">Education</div>
-            <div className="space-y-1">
-              {(candidate.linkedin_data?.education || candidate.education).map((e, i) => (
-                <div key={i} className="text-stone-700 text-sm"><span className="font-semibold">{e.school}</span> · {e.degree}{e.field ? ` · ${e.field}` : ""} · {e.year}</div>
-              ))}
-            </div>
+            {/* Work history — honest empty state, no fabricated data on company-facing surfaces */}
+            <div className="font-bold mb-1.5 text-sm">Work history</div>
+            {candidate.linkedin_data?.experiences?.length > 0 ? (
+              <div className="space-y-2 mb-4">
+                {candidate.linkedin_data.experiences.map((w, i) => {
+                  const start = w.starts_at?.year;
+                  const end = w.ends_at?.year || (w.starts_at && !w.ends_at ? "Present" : null);
+                  return (
+                    <div key={i} className="border-l-2 border-stone-200 pl-3">
+                      <div className="font-semibold text-sm">{w.title}</div>
+                      <div className="text-stone-500 text-xs">{w.company}{start ? ` · ${start}${end && end !== start ? `–${end}` : ""}` : ""}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-xs text-stone-500 italic mb-4">History will populate when LinkedIn data sync is enabled.</div>
+            )}
+            {/* Education — same honest empty state */}
+            <div className="font-bold mb-1.5 text-sm">Education</div>
+            {candidate.linkedin_data?.education?.length > 0 ? (
+              <div className="space-y-1">
+                {candidate.linkedin_data.education.map((e, i) => (
+                  <div key={i} className="text-stone-700 text-sm"><span className="font-semibold">{e.school}</span> · {e.degree}{e.field ? ` · ${e.field}` : ""} · {e.year}</div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-xs text-stone-500 italic">Education details will populate when LinkedIn data sync is enabled.</div>
+            )}
             {candidate.linkedin_data?.skills?.length > 0 && (
               <>
-                <div className="font-bold mb-2 text-sm mt-4">Skills</div>
+                <div className="font-bold mb-1.5 text-sm mt-4">Skills</div>
                 <div className="flex flex-wrap gap-1.5">
                   {candidate.linkedin_data.skills.map(s => (
                     <span key={s} className="inline-block bg-stone-100 text-stone-700 rounded-full px-2 py-0.5 text-[11px]">{s}</span>
@@ -1607,10 +1624,14 @@ function CandidateProfile({ candidate, onBack, onRequestIntro }) {
               <div><span className="text-stone-500 text-xs">Location</span><div className="text-stone-700">{locDisplay}</div></div>
             </div>
           </Card>
-          <Card className="border-amber-300">
-            <div className="text-xs uppercase tracking-wider text-amber-700 font-bold mb-2 flex items-center gap-1"><Shield size={12} /> Zap's notes</div>
-            <div className="text-sm text-stone-700">Zap met {candidate.firstName} in person on {candidate.dateApplied}. Vetting notes available on request.</div>
-          </Card>
+          {candidate.vetted_in_person && (
+            <Card className="border-amber-300">
+              <div className="text-xs uppercase tracking-wider text-amber-700 font-bold mb-2 flex items-center gap-1"><Shield size={12} /> Zap's notes</div>
+              <div className="text-sm text-stone-700">
+                Zap met {candidate.firstName} in person{candidate.vetted_at ? ` on ${candidate.vetted_at}` : ""}. Vetting notes available on request.
+              </div>
+            </Card>
+          )}
         </div>
       </div>
     </div>
