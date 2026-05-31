@@ -58,10 +58,18 @@ self-service screen in Phase 2.
 ## When something breaks
 
 1. Check the **Vercel deploy logs** dashboard: _(Mike will paste the real link
-   here.)_
-2. **Message Mike on Slack** with the broken URL and what you did.
-3. If a recent change caused it, you can open the PR that introduced it and click
+   here.)_ — if prod is down, a deploy is probably failing.
+2. Check **Vercel Analytics / Speed Insights** (in the Vercel project dashboard)
+   for traffic + Core Web Vitals.
+3. Check **Supabase logs** (Supabase dashboard → Logs) for database/auth errors.
+4. _(If Sentry is enabled — see #19 — check the Sentry dashboard for the client
+   error.)_
+5. **Message Mike on Slack** with the broken URL and what you did.
+6. If a recent change caused it, open the PR that introduced it and click
    **"Revert"** to roll it back instantly.
+
+> **If you get a Supabase usage-alert email:** you have ~2 weeks of headroom —
+> either clean up data or upgrade Supabase to Pro ($25/mo).
 
 ---
 
