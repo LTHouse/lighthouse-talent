@@ -12,7 +12,8 @@ import {
 // INVESTORS export remains in data.js (dormant schema) — intentionally NOT imported here.
 // To reactivate the investor portal, re-add to this import + restore the branches in
 // feature/investor-portal-v1.
-import { CANDIDATES as RAW_CANDIDATES, COMPANIES, SAVED_SEARCHES, SHORTLISTS, RESOURCES, INITIAL_INTRO_REQUESTS, DEMO_TALENT_CANDIDATE_ID } from "./data.js";
+import { COMPANIES, SAVED_SEARCHES, SHORTLISTS, RESOURCES, INITIAL_INTRO_REQUESTS, DEMO_TALENT_CANDIDATE_ID } from "./data.js";
+import { CandidatesProvider, useCandidates } from "./lib/data.jsx";
 import { AuthProvider, useAuth, LoginScreen } from "./auth.jsx";
 import { enrichFromLinkedIn, isStale } from "./lib/linkedinEnrich.js";
 
@@ -66,32 +67,9 @@ const STATUS_LABELS = {
 };
 const STATUS_ORDER = ["pre_onboard", "applied", "reviewing", "vetting_scheduled", "active", "hidden", "archived"];
 
-const CANDIDATES = RAW_CANDIDATES.map(c => {
-  const vetted = _seededVetting(c.id);
-  const status = STATUS_TO_ENUM[c.vettingStatus] || "applied";
-  return {
-    ...c,
-    // Canonical spec fields per §4. Legacy `vettingStatus` + `linkedin` kept temporarily
-    // for any read-site we haven't migrated yet; new code should always use `status` + `linkedin_url`.
-    status,
-    linkedin_url: c.linkedin || null,
-    linkedin_id: null, // populated by Sign In with LinkedIn OAuth in production
-    admin_internal_status: c.roles || null, // legacy Airtable `roles` field → admin-internal annotation
-    batch_id: null, // populated by Bulk Import (deferred feature)
-    is_demo: false, // seed candidates default false; demo-only mock users would flip true
-    vetted_in_person: vetted,
-    vetted_at: vetted ? _seededVettedDate(c.id) : null,
-    vetted_by: vetted ? "Zap" : null,
-    // LinkedIn enrichment fields. Proxycurl shut down; enrichment is deferred —
-    // shape stays so the UI can render whatever lands once a vendor is chosen.
-    linkedin_data: null,
-    linkedin_data_last_updated: null,
-    linkedin_data_source: null,
-    linkedin_refresh_priority: "normal", // normal | high | frozen
-    linkedin_verified: false, // true once the candidate completes Sign In with LinkedIn OAuth
-    intake_source: "imported", // "linkedin_oauth" | "manual_entry" | "imported"
-  };
-});
+// Candidates now load live from Supabase via CandidatesProvider/useCandidates (issue #13).
+// The old in-memory RAW_CANDIDATES.map(...) transform has been removed; the data layer
+// returns objects already in the camelCase shape the app expects.
 
 // Featured Talent of the Week — 4 weeks of mock data (only vetted candidates eligible).
 // Week keys are ISO date strings for the Monday of that week.
@@ -108,22 +86,9 @@ function _shiftWeek(weekStart, deltaWeeks) {
   return d.toISOString().slice(0, 10);
 }
 const _NOW_WEEK = _isoWeekStart(new Date());
-const _VETTED_IDS = CANDIDATES.filter(c => c.vetted_in_person).map(c => c.id);
-function _pickFeatures(n, offset = 0, notes = []) {
-  return _VETTED_IDS.slice(offset, offset + n).map((id, i) => ({ candidate_id: id, curator_note: notes[i] || "" }));
-}
-const INITIAL_FEATURED_WEEKS = [
-  { week_starting: _shiftWeek(_NOW_WEEK, -2), candidate_features: _pickFeatures(3, 0), weekly_note: "Three operators who've shipped real product under pressure." },
-  { week_starting: _shiftWeek(_NOW_WEEK, -1), candidate_features: _pickFeatures(3, 3), weekly_note: "" },
-  { week_starting: _NOW_WEEK, candidate_features: _pickFeatures(5, 6, [
-    "Shipped Wayfair's relocation hub end-to-end. Now ready to do it for a founder.",
-    "Six years at three startups before Anvil. Calmest operator in any room.",
-    "Came up via the Nashville music scene — turned product into a six-figure ARR business.",
-    "Fullstack engineer who can also write the marketing copy. Rare combo.",
-    "Customer success leader who actually loves the renewal call.",
-  ]), weekly_note: "Five names that keep coming up in founder conversations this month." },
-  { week_starting: _shiftWeek(_NOW_WEEK, 1), candidate_features: _pickFeatures(4, 11), weekly_note: "" },
-];
+// Featured Talent has no mock candidate source after the live-data migration (issue #13).
+// Honest empty state until real featured wiring lands (issue #18).
+const INITIAL_FEATURED_WEEKS = [];
 
 // Backward-compat reader — supports the older { candidate_ids, curator_note } shape too.
 function getFeatures(week) {
@@ -138,10 +103,8 @@ function getWeeklyNote(week) {
 }
 
 // Sent for Review — Zap-pushed candidates landing on a company's home dashboard.
-const INITIAL_SENT_FOR_REVIEW = [
-  { id: "sr_1", candidate_id: _VETTED_IDS[0], sent_to_company_id: 5, sent_by: "Zap", sent_at: new Date(Date.now() - 2 * 86400000).toISOString().slice(0, 10), zap_note: "Met them at the Nashville founder dinner last week — exact match for your Head of Ops search.", status: "pending", response_at: null, response_reason: null },
-  { id: "sr_2", candidate_id: _VETTED_IDS[1], sent_to_company_id: 5, sent_by: "Zap", sent_at: new Date(Date.now() - 5 * 86400000).toISOString().slice(0, 10), zap_note: "Coffee'd with them yesterday. Strong product judgment, ready for a Series A move.", status: "pending", response_at: null, response_reason: null },
-];
+// No mock candidate source after the live-data migration (issue #13); honest empty state.
+const INITIAL_SENT_FOR_REVIEW = [];
 
 // Find the current week's featured set from the persisted list.
 function getCurrentFeatured(weeks) {
@@ -466,8 +429,16 @@ function SignedInShell({ user, logout }) {
     <>
       <div key={role}>
         {role === "talent" && <TalentIntakeFlow user={effectiveUser} logout={logout} />}
-        {role === "company" && <CompanyPortal user={effectiveUser} logout={logout} />}
-        {role === "admin" && <AdminPortal user={effectiveUser} logout={logout} />}
+        {role === "company" && (
+          <CandidatesProvider role={role} userId={effectiveUser.id}>
+            <CompanyPortal user={effectiveUser} logout={logout} />
+          </CandidatesProvider>
+        )}
+        {role === "admin" && (
+          <CandidatesProvider role={role} userId={effectiveUser.id}>
+            <AdminPortal user={effectiveUser} logout={logout} />
+          </CandidatesProvider>
+        )}
       </div>
       <ModeSwitcher mode={mode} setMode={setMode} signedInEmail={user.email} logout={logout} />
     </>
@@ -787,6 +758,7 @@ const DEFAULT_FILTERS = {
 };
 
 function CompanyPortal({ user, logout }) {
+  const { candidates: liveCandidates, loading: candidatesLoading, error: candidatesError } = useCandidates();
   const [tab, setTab] = useState("home");
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [nlQuery, setNlQuery] = useState("");
@@ -838,7 +810,7 @@ function CompanyPortal({ user, logout }) {
   function runFilterSearch(currentFilters = filters) {
     setLoading(true); setUsedAdvanced(false);
     setTimeout(() => {
-      setResults(filterCandidates(currentFilters, CANDIDATES));
+      setResults(filterCandidates(currentFilters, liveCandidates));
       setSearched(true); setLoading(false);
     }, 600);
   }
@@ -853,7 +825,7 @@ function CompanyPortal({ user, logout }) {
         hasTech: interp.hasTech, hasStartup: interp.hasStartup,
       };
       setFilters(merged);
-      setResults(filterCandidates(merged, CANDIDATES));
+      setResults(filterCandidates(merged, liveCandidates));
       setSearched(true); setLoading(false);
     }, 1200);
   }
@@ -897,7 +869,7 @@ function CompanyPortal({ user, logout }) {
     setTab("search"); setTimeout(() => s.kind === "filter" ? runFilterSearch({ ...DEFAULT_FILTERS, ...s.filters }) : runAdvancedSearch(), 50);
   }
 
-  const activeCandidate = activeCandidateId ? CANDIDATES.find(c => c.id === activeCandidateId) : null;
+  const activeCandidate = activeCandidateId ? liveCandidates.find(c => c.id === activeCandidateId) : null;
 
   return (
     <div className="min-h-screen bg-white text-black">
@@ -930,6 +902,11 @@ function CompanyPortal({ user, logout }) {
         </div>
       </div>
       <div className="max-w-7xl mx-auto px-6 py-6">
+        {candidatesError && (
+          <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            Couldn't load candidates: {String(candidatesError)}
+          </div>
+        )}
         {activeCandidate ? (
           <CandidateProfile candidate={activeCandidate} onBack={() => setActiveCandidateId(null)}
             onRequestIntro={() => setShowIntroModal(activeCandidate.id)} />
@@ -973,7 +950,7 @@ function CompanyPortal({ user, logout }) {
       </div>
       {showIntroModal && (
         <IntroRequestModal
-          candidate={CANDIDATES.find(c => c.id === showIntroModal)}
+          candidate={liveCandidates.find(c => c.id === showIntroModal)}
           requesterName={user.name || "Company"}
           onClose={() => setShowIntroModal(null)}
           onSubmit={(reason) => submitIntroRequest(showIntroModal, reason)}
@@ -989,6 +966,7 @@ function CompanyPortal({ user, logout }) {
 // Quick Access dual-column), each with parity in section-header treatment + dividers.
 // ============================================================
 function HomeDashboard({ user, reviewQueue, featuredWeeks, searches, shortlists, onOpenCandidate, onRespondReview, onRequestIntro, onGoSearch, onLoadSearch, onOpenShortlist }) {
+  const { candidates } = useCandidates();
   const greetingName = user.name || "team";
   const sortedQueue = [...reviewQueue].sort((a, b) => b.sent_at.localeCompare(a.sent_at));
   const currentWeek = getCurrentFeatured(featuredWeeks);
@@ -1039,7 +1017,7 @@ function HomeDashboard({ user, reviewQueue, featuredWeeks, searches, shortlists,
         ) : (
           <div className="flex gap-3 overflow-x-auto pb-3 -mx-1 px-1 snap-x snap-mandatory">
             {sortedQueue.map(r => {
-              const c = CANDIDATES.find(c => c.id === r.candidate_id);
+              const c = candidates.find(c => c.id === r.candidate_id);
               if (!c) return null;
               return <ReviewQueueCard key={r.id} review={r} candidate={c}
                 onOpen={() => onOpenCandidate(c.id)}
@@ -1162,6 +1140,7 @@ function ReviewQueueCard({ review, candidate, onOpen, onRespond, onRequestIntro 
 // features get an MM/YY badge of the last week they were featured.
 // ============================================================
 function FeaturedCarousel({ allFeatures, currentWeekStart, onOpenCandidate }) {
+  const { candidates } = useCandidates();
   const scrollerRef = useRef(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -1201,7 +1180,7 @@ function FeaturedCarousel({ allFeatures, currentWeekStart, onOpenCandidate }) {
       )}
       <div ref={scrollerRef} className="flex gap-3 overflow-x-auto snap-x pb-2 -mx-1 px-1 scroll-smooth">
         {allFeatures.map(f => {
-          const c = CANDIDATES.find(c => c.id === f.candidate_id);
+          const c = candidates.find(c => c.id === f.candidate_id);
           if (!c) return null;
           const badge = f.week_starting === currentWeekStart
             ? { label: "NEW", className: "bg-amber-500 text-white" }
@@ -1689,6 +1668,7 @@ function MySearchesView({ searches, setSearches, onRunSearch, onNewSearch }) {
 }
 
 function ShortlistsView({ shortlists, setShortlists, onOpenCandidate }) {
+  const { candidates } = useCandidates();
   const [active, setActive] = useState(null);
   if (active) {
     const sl = shortlists.find(s => s.id === active);
@@ -1699,7 +1679,7 @@ function ShortlistsView({ shortlists, setShortlists, onOpenCandidate }) {
         <h2 className="font-display text-3xl">{sl.name}</h2>
         <div className="space-y-2">
           {sl.candidateIds.map(id => {
-            const c = CANDIDATES.find(c => c.id === id);
+            const c = candidates.find(c => c.id === id);
             if (!c) return null;
             return (
               <Card key={id} onClick={() => onOpenCandidate(id)}>
@@ -1847,7 +1827,9 @@ function AdminPortal({ user, logout }) {
   const [view, setView] = useState("database");
   const [activeCandidateId, setActiveCandidateId] = useState(null);
   const [activeIntroId, setActiveIntroId] = useState(null);
-  const [candidates, setCandidates] = useState(CANDIDATES);
+  const { candidates: liveCandidates, loading: candidatesLoading, error: candidatesError } = useCandidates();
+  const [candidates, setCandidates] = useState([]);
+  useEffect(() => { setCandidates(liveCandidates); }, [liveCandidates]);
   const [introRequests, setIntroRequests] = useState(() => (typeof window !== "undefined" && window.__lt_intro_requests) || []);
   const [featuredWeeks, setFeaturedWeeks] = useState(() => (typeof window !== "undefined" && window.__lt_featured_weeks) || INITIAL_FEATURED_WEEKS);
   const [sentForReview, setSentForReview] = useState(() => (typeof window !== "undefined" && window.__lt_sent_for_review) || INITIAL_SENT_FOR_REVIEW);
@@ -1935,6 +1917,11 @@ function AdminPortal({ user, logout }) {
           </div>
         </div>
         <div className="p-6">
+          {candidatesError && (
+            <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              Couldn't load candidates: {String(candidatesError)}
+            </div>
+          )}
           {view === "database" && !activeCandidateId && <AdminDatabase candidates={candidates} onOpen={(id) => { setActiveCandidateId(id); setView("profile"); }} />}
           {view === "pending" && !activeCandidateId && <AdminPending candidates={candidates} onOpen={(id) => { setActiveCandidateId(id); setView("profile"); }} updateCandidate={updateCandidate} />}
           {view === "intros" && !activeIntroId && <AdminIntroRequests requests={introRequests} onOpen={(id) => { setActiveIntroId(id); setView("intro"); }} user={user} />}
@@ -2195,6 +2182,7 @@ function AdminCandidateProfile({ candidate, updateCandidate, onBack, sendForRevi
 }
 
 function AdminIntroRequests({ requests, onOpen, user }) {
+  const { candidates } = useCandidates();
   const [filterStatus, setFilterStatus] = useState("pending");
   const filtered = requests.filter(r => filterStatus === "all" ? true : r.status === filterStatus);
   return (
@@ -2210,7 +2198,7 @@ function AdminIntroRequests({ requests, onOpen, user }) {
       {filtered.length === 0 && <Card className="text-center py-12 text-sm text-stone-500">No intro requests {filterStatus !== "all" && `with status: ${filterStatus}`}.</Card>}
       <Card padded={false}>
         {filtered.map(r => {
-          const c = CANDIDATES.find(cn => cn.id === r.candidateId);
+          const c = candidates.find(cn => cn.id === r.candidateId);
           if (!c) return null;
           return (
             <div key={r.id} onClick={() => onOpen(r.id)}
@@ -2236,7 +2224,8 @@ function AdminIntroRequests({ requests, onOpen, user }) {
 }
 
 function AdminIntroDetail({ intro, onBack, onApprove, onDecline, user }) {
-  const c = CANDIDATES.find(cn => cn.id === intro.candidateId);
+  const { candidates } = useCandidates();
+  const c = candidates.find(cn => cn.id === intro.candidateId);
   const [emailBody, setEmailBody] = useState("");
   const [emailSubject, setEmailSubject] = useState("");
   const [recipientContact, setRecipientContact] = useState("");
