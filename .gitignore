@@ -1,7 +1,11 @@
 node_modules
 dist
 .DS_Store
-.env
+# dotenvx: .env is COMMITTED (encrypted). Never commit the key or local secrets.
+.env.keys
+.env.ops.local
 .env.local
+.env.*.local
+naughtcreds.txt
 .vercel
 *.log
