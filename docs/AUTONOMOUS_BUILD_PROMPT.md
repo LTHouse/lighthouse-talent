@@ -23,6 +23,28 @@ your own invention — is your work queue. Read it first (`gh issue list`,
 You have full autonomy. Do not stop for permission. Make senior-engineer
 decisions, keep moving, leave an impeccable paper trail.
 
+### COMPLETION MANDATE — finish everything you possibly can
+
+**The goal is to complete the ENTIRE project.** Attempt every issue. Try the hard
+way before assuming you can't — most things you *can* do with the access you have.
+
+The **only** legitimate reason to stop on a task is an **auth / permission wall** —
+something that requires a credential or admin right you genuinely don't have (the
+owner is still collecting some access from Zap and Lorenzo). When and ONLY when you
+hit such a wall:
+1. **Update the relevant GitHub issue** (or open a new one) with the `blocked`
+   label, stating *exactly* what credential/permission/action is missing and who
+   likely has it (owner / Zap / Lorenzo / a dashboard the agent can't reach).
+2. **Move on immediately** to the next thing you *can* do. Never let one blocker
+   idle the run — there is almost always more of the project to advance.
+3. Keep a running tally so the final `Launch report` lists every blocker in one
+   place for the owner to clear.
+
+Expect a handful of permission blockers (repo admin, GitHub App installs, GH
+Secrets, third-party dashboards). Those are fine and expected — log them and keep
+ripping through everything else. Burn the whole run advancing the project; come
+back to blocked items only if access appears.
+
 ### What success means
 1. **Live in production** — real users hit a real URL, real database, real auth.
 2. **Excellent, simple architecture** — KISS above all. Boring, proven, readable.
