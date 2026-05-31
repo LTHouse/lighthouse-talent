@@ -1,6 +1,11 @@
 node_modules
 dist
 .DS_Store
+# Next.js
+.next/
+next-env.d.ts
+*.tsbuildinfo
+.vercel/
 # dotenvx: .env is COMMITTED (encrypted). Never commit the key or local secrets.
 .env.keys
 .env.ops.local

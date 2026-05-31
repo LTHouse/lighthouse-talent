@@ -16,9 +16,10 @@ interface CandidateCardMVPProps {
 
 export default function CandidateCardMVP({ candidate, onOpen, onRequestIntro, onAddToShortlist, shortlists }: CandidateCardMVPProps) {
   const [showShort, setShowShort] = useState(false);
+  const loc = candidate.currentLocation ?? candidate.location;
   const locDisplay = candidate.relocationStatus === "remote_only"
-    ? `${candidate.currentLocation} — remote only`
-    : candidate.currentLocation;
+    ? (loc ? `${loc} — remote only` : "Remote only")
+    : (loc ?? "—");
 
   return (
     <Card onClick={onOpen} className="hover:border-amber-400 hover:shadow-sm transition cursor-pointer">
