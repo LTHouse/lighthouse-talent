@@ -59,6 +59,34 @@ export function candidateFromRow(row) {
   };
 }
 
+// camelCase -> snake_case column map for the fields whose names differ.
+const CAMEL_TO_SNAKE = {
+  firstName: "first_name", lastName: "last_name", linkedin: "linkedin_url",
+  linkedinUrl: "linkedin_url", linkedinVerified: "linkedin_verified",
+  photoSeed: "photo_seed", currentRole: "current_role_title", currentCompany: "current_company",
+  yearsExperience: "years_experience", currentLocation: "current_location",
+  relocationStatus: "relocation_status", workMode: "work_mode", primaryRole: "primary_role",
+  roleTypes: "role_types", workHistory: "work_history",
+  hasStartupExperience: "has_startup_experience", startupStage: "startup_stage",
+  startupSize: "startup_size", hasTechExperience: "has_tech_experience",
+  rankedMotivations: "ranked_motivations", topMotivation: "top_motivation",
+  adminNotes: "admin_notes", dateApplied: "date_applied", introRequests: "intro_requests",
+  lastActivity: "last_activity", intakeSource: "intake_source",
+};
+
+// A partial edit (e.g. { adminNotes, status } or { vetted_in_person, vetted_at })
+// -> snake_case columns. Maps known camelCase keys; passes snake_case-native keys
+// (status, vetted_*, admin_internal_status, linkedin_*) through untouched.
+export function candidatePatchToRow(patch) {
+  const row = {};
+  for (const [k, v] of Object.entries(patch)) {
+    if (k === "vettingStatus") row.status = STATUS_DISPLAY_TO_DB[v] ?? v;
+    else if (CAMEL_TO_SNAKE[k]) row[CAMEL_TO_SNAKE[k]] = v;
+    else row[k] = v; // already a DB column name
+  }
+  return row;
+}
+
 // camelCase object (mock or form) -> snake_case DB columns. Only includes
 // columns we set from the app/seed; DB defaults fill the rest. Drops undefined.
 export function candidateToRow(c) {
