@@ -24,3 +24,19 @@ jobs:
         env:
           # dotenvx decrypts the committed .env at build (NEXT_PUBLIC_* inlined).
           DOTENV_PRIVATE_KEY: ${{ secrets.DOTENV_PRIVATE_KEY }}
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Playwright smoke tests
+        run: npm run test:e2e
+        env:
+          # The dev server (booted by Playwright) decrypts .env via dotenvx.
+          DOTENV_PRIVATE_KEY: ${{ secrets.DOTENV_PRIVATE_KEY }}
