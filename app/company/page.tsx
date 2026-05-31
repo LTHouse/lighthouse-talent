@@ -9,6 +9,7 @@ import { listCandidates } from "@/lib/data/candidates";
 import { listSavedSearches, listShortlists } from "@/lib/data/workspace";
 import { getCurrentFeatured } from "@/lib/data/featured";
 import { listSentForReview } from "@/lib/data/sentForReview";
+import { listPublishedResources } from "@/lib/data/resources";
 import CompanyPortalClient from "@/components/company/CompanyPortalClient";
 
 export default async function CompanyPage() {
@@ -16,12 +17,13 @@ export default async function CompanyPage() {
   if (!user) redirect("/");
   if (user.role !== "company") redirect("/");
 
-  const [candidates, savedSearches, shortlists, featured, reviewQueue] = await Promise.all([
+  const [candidates, savedSearches, shortlists, featured, reviewQueue, resources] = await Promise.all([
     listCandidates("company"),
     listSavedSearches(),
     listShortlists(),
     getCurrentFeatured(),
     listSentForReview(),
+    listPublishedResources(),
   ]);
 
   return (
@@ -32,6 +34,7 @@ export default async function CompanyPage() {
       shortlists={shortlists}
       featured={featured}
       reviewQueue={reviewQueue}
+      resources={resources}
     />
   );
 }

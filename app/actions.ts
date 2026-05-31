@@ -306,3 +306,59 @@ export async function updateTalentProfileAction(patch: TalentProfilePatch): Prom
   revalidatePath("/talent");
   return { ok: true };
 }
+
+// ---- Resources (admin) ----
+// Create a resource: an external link OR an uploaded file (Supabase Storage).
+// Takes FormData so a file can be sent from the admin form.
+export async function createResourceAction(formData: FormData): Promise<{ ok: boolean; error?: string }> {
+  const user = await getSessionUser();
+  if (user?.role !== "admin") return { ok: false, error: "Not authorized." };
+
+  const title = String(formData.get("title") ?? "").trim();
+  if (!title) return { ok: false, error: "Title is required." };
+  const category = (formData.get("category") as string) || null;
+  let type = (formData.get("type") as string) || null;
+  const description = (formData.get("description") as string) || null;
+  const externalUrl = ((formData.get("externalUrl") as string) || "").trim() || null;
+  const file = formData.get("file");
+
+  const supabase = await createClient();
+  let storagePath: string | null = null;
+
+  if (file instanceof File && file.size > 0) {
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+    storagePath = `${crypto.randomUUID()}/${safeName}`;
+    const { error: upErr } = await supabase.storage
+      .from("resources")
+      .upload(storagePath, file, { contentType: file.type || "application/octet-stream", upsert: false });
+    if (upErr) return { ok: false, error: `Upload failed: ${upErr.message}` };
+    type = type || "file";
+  } else if (externalUrl) {
+    type = type || "link";
+  } else {
+    return { ok: false, error: "Provide a file or an external URL." };
+  }
+
+  const { error } = await supabase.from("resources").insert({
+    title, category, type, description, external_url: externalUrl, storage_path: storagePath, published: true,
+  });
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/admin");
+  revalidatePath("/company");
+  return { ok: true };
+}
+
+export async function deleteResourceAction(id: string): Promise<{ ok: boolean; error?: string }> {
+  const user = await getSessionUser();
+  if (user?.role !== "admin") return { ok: false, error: "Not authorized." };
+  const supabase = await createClient();
+  const { data: row } = await supabase.from("resources").select("storage_path").eq("id", id).maybeSingle();
+  if (row?.storage_path) {
+    await supabase.storage.from("resources").remove([row.storage_path]);
+  }
+  const { error } = await supabase.from("resources").delete().eq("id", id);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/admin");
+  revalidatePath("/company");
+  return { ok: true };
+}
