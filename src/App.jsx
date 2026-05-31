@@ -13,7 +13,7 @@ import {
 // To reactivate the investor portal, re-add to this import + restore the branches in
 // feature/investor-portal-v1.
 import { COMPANIES, SAVED_SEARCHES, SHORTLISTS, RESOURCES, INITIAL_INTRO_REQUESTS, DEMO_TALENT_CANDIDATE_ID } from "./data.js";
-import { CandidatesProvider, useCandidates } from "./lib/data.jsx";
+import { CandidatesProvider, useCandidates, updateCandidate as persistCandidate } from "./lib/data.jsx";
 import { AuthProvider, useAuth, LoginScreen } from "./auth.jsx";
 import { enrichFromLinkedIn, isStale } from "./lib/linkedinEnrich.js";
 
@@ -1830,6 +1830,7 @@ function AdminPortal({ user, logout }) {
   const { candidates: liveCandidates, loading: candidatesLoading, error: candidatesError } = useCandidates();
   const [candidates, setCandidates] = useState([]);
   useEffect(() => { setCandidates(liveCandidates); }, [liveCandidates]);
+  const [writeError, setWriteError] = useState(null);
   const [introRequests, setIntroRequests] = useState(() => (typeof window !== "undefined" && window.__lt_intro_requests) || []);
   const [featuredWeeks, setFeaturedWeeks] = useState(() => (typeof window !== "undefined" && window.__lt_featured_weeks) || INITIAL_FEATURED_WEEKS);
   const [sentForReview, setSentForReview] = useState(() => (typeof window !== "undefined" && window.__lt_sent_for_review) || INITIAL_SENT_FOR_REVIEW);
@@ -1844,7 +1845,17 @@ function AdminPortal({ user, logout }) {
   useEffect(() => { if (typeof window !== "undefined") window.__lt_sent_for_review = sentForReview; }, [sentForReview]);
   useBackHandler(!!activeCandidateId, () => { setActiveCandidateId(null); setView("database"); });
   useBackHandler(!!activeIntroId, () => { setActiveIntroId(null); setView("intros"); });
-  function updateCandidate(id, patch) { setCandidates(cs => cs.map(c => c.id === id ? { ...c, ...patch } : c)); }
+  // Optimistic admin write (#14): show the change instantly, persist via the single
+  // data-layer helper, and roll back + surface the error on failure (never silent).
+  function updateCandidate(id, patch) {
+    const prev = candidates;
+    setCandidates(cs => cs.map(c => c.id === id ? { ...c, ...patch } : c));
+    setWriteError(null);
+    persistCandidate(id, patch).catch(err => {
+      setCandidates(prev);
+      setWriteError(err?.message || "Couldn't save that change.");
+    });
+  }
   function updateIntro(id, patch) {
     const next = introRequests.map(r => r.id === id ? { ...r, ...patch } : r);
     setIntroRequests(next);
@@ -1920,6 +1931,12 @@ function AdminPortal({ user, logout }) {
           {candidatesError && (
             <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
               Couldn't load candidates: {String(candidatesError)}
+            </div>
+          )}
+          {writeError && (
+            <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center justify-between">
+              <span>Couldn't save: {String(writeError)} — your change was rolled back.</span>
+              <button className="underline ml-3" onClick={() => setWriteError(null)}>Dismiss</button>
             </div>
           )}
           {view === "database" && !activeCandidateId && <AdminDatabase candidates={candidates} onOpen={(id) => { setActiveCandidateId(id); setView("profile"); }} />}

@@ -3,7 +3,22 @@
 // See .claude/CLAUDE.md (data-layer non-negotiable).
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { supabase } from "./supabase.js";
-import { candidateFromRow } from "./candidateMapping.js";
+import { candidateFromRow, candidatePatchToRow } from "./candidateMapping.js";
+
+// The single candidate mutation helper (#14). ALL admin writes route through here
+// — no scattered supabase.from('candidates').update(...) calls. Maps the camelCase
+// patch to columns, updates, returns the updated row. Throws on error (no swallow).
+export async function updateCandidate(id, patch) {
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const { data, error } = await supabase
+    .from("candidates")
+    .update(candidatePatchToRow(patch))
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) throw error;
+  return candidateFromRow(data);
+}
 
 // Fetch candidates for the current viewer. The role/user filter here is UX-only —
 // RLS (#10) is the real security boundary. Returns the camelCase shape App.jsx
