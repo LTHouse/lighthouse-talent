@@ -31,15 +31,14 @@ interests. When product scope is ambiguous, ask in a PR comment — don't invent
 
 ## Stack
 
-- **Today:** Vite + React 18 + Tailwind CSS. Single-page app.
-- **Backend:** Supabase (Postgres + Auth + RLS + Edge Functions). Project ref
-  `rdnfckhtheescralfkwn`.
-- **Auth:** Supabase Auth — **LinkedIn OIDC is the primary sign-in**, email
-  magic-link is the fallback.
+**Migrating to Next.js + TypeScript** (owner decision — see [ADR 0002](../docs/decisions/0002-migrate-to-nextjs-ts.md), which supersedes the earlier "stay on Vite" call). The two apps coexist until parity, then the Vite app is retired (#25).
+
+- **Target (`next-app/`):** Next.js 16 (App Router) + React 19 + **TypeScript (strict + `noUncheckedIndexedAccess`)** + Tailwind v4. `@supabase/ssr` for cookie-based server auth. New work goes here — follow the `typescript-standards` skill.
+- **Legacy (`src/`):** the original Vite + React 18 SPA, still the deployed prod app at the repo root until cutover. Don't add features here.
+- **Backend:** Supabase (Postgres + Auth + RLS + Edge Functions). Project ref `rdnfckhtheescralfkwn`.
+- **Auth:** Supabase Auth — **LinkedIn OIDC primary**, email magic-link fallback.
 - **Hosting:** Vercel (project `lighthouse-talent`, prod branch `main`).
-- **Possible later:** a Next.js + TypeScript migration is a *spike with a "no"
-  exit*. Do not start it without a documented "yes". Default expectation: stay on
-  Vite.
+- **Next 16 note:** middleware is `proxy.ts`; `cookies()`/`searchParams` are async. It's not the Next.js in your training — check `next-app/node_modules/next/dist/docs/`.
 
 ## Where things live
 

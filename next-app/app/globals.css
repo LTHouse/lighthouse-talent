@@ -1,0 +1,43 @@
+/* Fonts: Syne (display) + Inter (body) — ported from the Vite app. Must precede
+   all other rules per CSS @import ordering. */
+@import url("https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap");
+@import "tailwindcss";
+
+/* Theme tokens (Tailwind v4 CSS config). Brand palette ported 1:1. */
+@theme {
+  --font-display: "Syne", "Inter", sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --color-cream: #fafaf7;
+  --color-ink: #0a0a0a;
+  --color-bolt: #facc15;
+}
+
+html,
+body {
+  height: 100%;
+}
+body {
+  background: #ffffff;
+  color: #000000;
+  -webkit-font-smoothing: antialiased;
+  font-family: var(--font-sans);
+  font-feature-settings: "ss01", "cv02";
+}
+input,
+textarea,
+select,
+button {
+  font-family: inherit;
+}
+/* Match the Vite app's .font-display (Syne, 600, tight tracking). */
+.font-display {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+input[type="range"] {
+  accent-color: var(--color-bolt);
+}

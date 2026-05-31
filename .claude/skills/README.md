@@ -37,7 +37,8 @@ upstream value and is what shows in `/skills`.
 
 - A custom **Supabase-on-this-project** skill (our schema + RLS + the WHERE-clause
   rule) — Phase 2.
-- A **TypeScript-standards** skill — start of Phase 3.
+- ~~A **TypeScript-standards** skill~~ — **installed** as `typescript-standards/`
+  (project-specific) now that the Next.js + TS migration is underway.
 - A **security-review** skill — once patterns to document exist.
 - `deploy-to-vercel`, `vercel-optimize`, `composition-patterns`,
   `react-view-transitions` — install when a specific need surfaces.

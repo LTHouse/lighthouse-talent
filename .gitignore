@@ -9,3 +9,6 @@ dist
 naughtcreds.txt
 .vercel
 *.log
+
+# Playwright MCP run artifacts
+.playwright-mcp/
