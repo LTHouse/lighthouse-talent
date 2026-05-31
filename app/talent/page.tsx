@@ -1,12 +1,13 @@
-// Talent portal — server component. Gated on the talent role; shows the signed-in
-// candidate their own profile row (RLS scopes to their user_id). The full intake/
-// edit UX is the #15/#22 port; this is the typed shell on the established pattern.
+// Talent portal — server component, gated on the talent role. The talent's whole
+// signed-in experience is viewing + editing their own profile (by design they see
+// nothing else). RLS scopes the row to their user_id.
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowRight, Zap } from "lucide-react";
 import { getSessionUser } from "@/lib/auth";
 import { listCandidates } from "@/lib/data/candidates";
 import SignOutButton from "@/components/SignOutButton";
+import TalentProfileEditor from "@/components/talent/TalentProfileEditor";
 
 export default async function TalentPage() {
   const user = await getSessionUser();
@@ -29,15 +30,21 @@ export default async function TalentPage() {
         </div>
       </header>
       <main className="max-w-3xl mx-auto px-6 py-10">
-        <h1 className="font-display text-2xl font-bold mb-2">Welcome, {user.name}</h1>
         {me ? (
-          <p className="text-stone-600 text-sm">
-            Your application status: <span className="font-semibold">{me.vettingStatus}</span>.
-          </p>
+          <>
+            <div className="mb-6">
+              <h1 className="font-display text-2xl font-bold">Your profile, {me.firstName || user.name}</h1>
+              <p className="text-stone-500 text-sm mt-1">
+                Keep this current — it&apos;s what Lighthouse uses to match you. You can update it anytime.
+              </p>
+            </div>
+            <TalentProfileEditor candidate={me} />
+          </>
         ) : (
           <div className="space-y-4">
+            <h1 className="font-display text-2xl font-bold">Welcome, {user.name}</h1>
             <p className="text-stone-600 text-sm">
-              You haven&apos;t applied yet. Complete the application to join the talent network.
+              We couldn&apos;t find your application yet. Complete it to join the talent network.
             </p>
             <Link
               href="/apply"

@@ -264,3 +264,45 @@ export async function respondToReviewAction(
   revalidatePath("/company");
   return { ok: true };
 }
+
+// ---- Talent self-edit ----
+export interface TalentProfilePatch {
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  linkedin?: string;
+  currentRole?: string;
+  currentCompany?: string;
+  yearsExperience?: number | null;
+  currentLocation?: string;
+  relocationStatus?: string;
+  workMode?: string;
+  primaryRole?: string;
+  roleTypes?: string[];
+}
+
+// A talent updates their OWN candidate row. RLS scopes updates to user_id =
+// auth.uid(); we also filter by it. Only profile fields — never status/vetting/is_demo.
+export async function updateTalentProfileAction(patch: TalentProfilePatch): Promise<{ ok: boolean; error?: string }> {
+  const user = await getSessionUser();
+  if (user?.role !== "talent") return { ok: false, error: "Not authorized." };
+  const row: Database["public"]["Tables"]["candidates"]["Update"] = {};
+  if (patch.firstName !== undefined) row.first_name = patch.firstName;
+  if (patch.lastName !== undefined) row.last_name = patch.lastName;
+  if (patch.phone !== undefined) row.phone = patch.phone;
+  if (patch.linkedin !== undefined) row.linkedin_url = patch.linkedin;
+  if (patch.currentRole !== undefined) row.current_role_title = patch.currentRole;
+  if (patch.currentCompany !== undefined) row.current_company = patch.currentCompany;
+  if (patch.yearsExperience !== undefined) row.years_experience = patch.yearsExperience;
+  if (patch.currentLocation !== undefined) row.current_location = patch.currentLocation;
+  if (patch.relocationStatus !== undefined) row.relocation_status = patch.relocationStatus;
+  if (patch.workMode !== undefined) row.work_mode = patch.workMode;
+  if (patch.primaryRole !== undefined) row.primary_role = patch.primaryRole;
+  if (patch.roleTypes !== undefined) row.role_types = patch.roleTypes;
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("candidates").update(row).eq("user_id", user.id);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/talent");
+  return { ok: true };
+}
