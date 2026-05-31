@@ -77,7 +77,7 @@ self-service screen in Phase 2.
 
 ```bash
 npm install
-npm run dev      # http://localhost:5173
+npm run dev      # Next.js — http://localhost:3000
 ```
 
 Everything else an engineer (or a fresh Claude session) needs is in

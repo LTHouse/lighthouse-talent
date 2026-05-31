@@ -10,8 +10,8 @@
 // Uses the service-role key — destructive/privileged, so it lives in scripts/
 // only and is never imported by the app.
 import { createClient } from "@supabase/supabase-js";
-import { CANDIDATES } from "../src/data.js";
-import { candidateToRow } from "../src/lib/candidateMapping.js";
+import { CANDIDATES } from "./demo-candidates.data.js";
+import { candidateToRow } from "./candidate-mapping.js";
 
 const args = process.argv.slice(2);
 const target = (args.find((a) => a.startsWith("--target=")) || "--target=staging").split("=")[1];
