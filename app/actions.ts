@@ -61,13 +61,36 @@ export async function createIntroRequestAction(candidateId: string, message: str
   return { ok: true };
 }
 
-// Admin approves / declines an intro request.
+// Admin approves / declines an intro request. On approval, fire the (toggle-gated)
+// Resend email Edge Function — it no-ops unless the outbound_emails master toggle
+// is on, so this is safe to always call (#17).
 export async function respondIntroAction(id: string, status: "approved" | "declined"): Promise<{ ok: boolean; error?: string }> {
   const user = await getSessionUser();
   if (user?.role !== "admin") return { ok: false, error: "Not authorized." };
   const supabase = await createClient();
   const { error } = await supabase.from("intro_requests").update({ status }).eq("id", id);
   if (error) return { ok: false, error: error.message };
+
+  if (status === "approved") {
+    const { data: row } = await supabase
+      .from("intro_requests")
+      .select("message, candidates(first_name, last_name, email), companies(name)")
+      .eq("id", id)
+      .maybeSingle();
+    const cand = row?.candidates;
+    if (cand?.email) {
+      // Best-effort; the function self-gates on the master toggle.
+      await supabase.functions.invoke("send-intro-email", {
+        body: {
+          to: cand.email,
+          candidateName: [cand.first_name, cand.last_name].filter(Boolean).join(" "),
+          companyName: row?.companies?.name ?? "A company",
+          reason: row?.message ?? "",
+        },
+      }).catch(() => { /* email is non-critical; never block the approval */ });
+    }
+  }
+
   revalidatePath("/admin");
   return { ok: true };
 }
@@ -116,5 +139,149 @@ export async function submitIntakeAction(form: IntakeForm): Promise<{ ok: boolea
     intake_source: "manual_entry",
   });
   if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+// ============================================================
+// Sub-feature write paths (companies, workspace, featured, review)
+// ============================================================
+type Json = Database["public"]["Tables"]["saved_searches"]["Insert"]["filters"];
+
+// ---- Companies (admin) ----
+export async function createCompanyAction(input: {
+  name: string; stage?: string; industry?: string; team?: number;
+}): Promise<{ ok: boolean; error?: string }> {
+  const user = await getSessionUser();
+  if (user?.role !== "admin") return { ok: false, error: "Not authorized." };
+  if (!input.name?.trim()) return { ok: false, error: "Company name is required." };
+  const supabase = await createClient();
+  const { error } = await supabase.from("companies").insert({
+    name: input.name.trim(),
+    stage: input.stage || null,
+    industry: input.industry || null,
+    team: input.team ?? null,
+  });
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/admin");
+  return { ok: true };
+}
+
+// ---- Saved searches (company) ----
+export async function saveSearchAction(input: {
+  name: string; kind: string; filters: Json; results: number;
+}): Promise<{ ok: boolean; error?: string }> {
+  const user = await getSessionUser();
+  if (user?.role !== "company" || !user.companyId) return { ok: false, error: "Not authorized." };
+  const supabase = await createClient();
+  const { error } = await supabase.from("saved_searches").insert({
+    company_id: user.companyId, name: input.name, kind: input.kind,
+    filters: input.filters, results: input.results,
+  });
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/company");
+  return { ok: true };
+}
+
+export async function deleteSavedSearchAction(id: string): Promise<{ ok: boolean; error?: string }> {
+  const user = await getSessionUser();
+  if (user?.role !== "company") return { ok: false, error: "Not authorized." };
+  const supabase = await createClient();
+  const { error } = await supabase.from("saved_searches").delete().eq("id", id);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/company");
+  return { ok: true };
+}
+
+// ---- Shortlists (company) ----
+export async function createShortlistAction(name: string): Promise<{ ok: boolean; error?: string }> {
+  const user = await getSessionUser();
+  if (user?.role !== "company" || !user.companyId) return { ok: false, error: "Not authorized." };
+  const supabase = await createClient();
+  const { error } = await supabase.from("shortlists").insert({
+    company_id: user.companyId, name, candidate_ids: [],
+  });
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/company");
+  return { ok: true };
+}
+
+// Client computes the new id set (add/remove) and sends it; RLS scopes to the company.
+export async function setShortlistCandidatesAction(id: string, candidateIds: string[]): Promise<{ ok: boolean; error?: string }> {
+  const user = await getSessionUser();
+  if (user?.role !== "company") return { ok: false, error: "Not authorized." };
+  const supabase = await createClient();
+  const { error } = await supabase.from("shortlists").update({ candidate_ids: candidateIds }).eq("id", id);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/company");
+  return { ok: true };
+}
+
+// ---- Featured talent (admin) ----
+export async function upsertFeaturedWeekAction(weekStarting: string, weeklyNote: string): Promise<{ ok: boolean; error?: string }> {
+  const user = await getSessionUser();
+  if (user?.role !== "admin") return { ok: false, error: "Not authorized." };
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("featured_talent_weeks")
+    .upsert({ week_starting: weekStarting, weekly_note: weeklyNote }, { onConflict: "week_starting" });
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/admin");
+  revalidatePath("/company");
+  return { ok: true };
+}
+
+export async function setFeaturedCandidateAction(
+  weekStarting: string, candidateId: string, present: boolean, curatorNote = ""
+): Promise<{ ok: boolean; error?: string }> {
+  const user = await getSessionUser();
+  if (user?.role !== "admin") return { ok: false, error: "Not authorized." };
+  const supabase = await createClient();
+  // Ensure the week row exists first (FK target).
+  await supabase.from("featured_talent_weeks").upsert({ week_starting: weekStarting }, { onConflict: "week_starting" });
+  const { error } = present
+    ? await supabase.from("featured_candidates").upsert(
+        { week_starting: weekStarting, candidate_id: candidateId, curator_note: curatorNote },
+        { onConflict: "week_starting,candidate_id" }
+      )
+    : await supabase.from("featured_candidates").delete()
+        .eq("week_starting", weekStarting).eq("candidate_id", candidateId);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/admin");
+  revalidatePath("/company");
+  return { ok: true };
+}
+
+// ---- Sent for review ----
+export async function sendForReviewAction(input: {
+  candidateId: string; companyId: string; note: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  const user = await getSessionUser();
+  if (user?.role !== "admin") return { ok: false, error: "Not authorized." };
+  const supabase = await createClient();
+  const { error } = await supabase.from("sent_for_review").insert({
+    candidate_id: input.candidateId,
+    sent_to_company_id: input.companyId,
+    sent_by: user.name,
+    zap_note: input.note,
+    status: "pending",
+  });
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/admin");
+  revalidatePath("/company");
+  return { ok: true };
+}
+
+export async function respondToReviewAction(
+  id: string, status: "interested" | "passed", reason?: string
+): Promise<{ ok: boolean; error?: string }> {
+  const user = await getSessionUser();
+  if (user?.role !== "company") return { ok: false, error: "Not authorized." };
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("sent_for_review")
+    .update({ status, response_reason: reason ?? null, responded_at: new Date().toISOString() })
+    .eq("id", id);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/company");
   return { ok: true };
 }
