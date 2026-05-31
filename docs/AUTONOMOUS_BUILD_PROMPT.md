@@ -142,6 +142,13 @@ The owner made these calls tonight. Honor them over the scaffold's defaults:
   `VERCEL_TOKEN`, `LINKEDIN_CLIENT_ID/SECRET`, `RESEND_API_KEY`. Use them via:
   `dotenvx run -f .env.ops.local -- <command>` (e.g. seed scripts, supabase CLI).
 - **npm scripts** (`dev`/`build`/`preview`) are already wrapped in `dotenvx run`.
+- **FIRST VERCEL DEPLOY WILL FAIL until you fix this:** because `build` is
+  `dotenvx run -- vite build`, Vercel needs the decryption key. **Before your first
+  deploy**, set `DOTENV_PRIVATE_KEY` (the value in the local `.env.keys`) as a Vercel
+  env var in **all three scopes** (Production, Preview, Development) via the Vercel
+  MCP/token. This is NOT GitHub-admin-gated — you can and must do it yourself.
+  (The Vercel project `lighthouse-talent` is already linked to the repo, prod
+  branch `main`, under the `lorenzos-projects` team.)
 - **IRON RULE:** anything **not** `VITE_`-prefixed is a secret. It must NEVER enter
   client code, the bundle, or Vercel build env. `service_role` is for seed/Edge
   scripts only. LinkedIn client-id/secret go in the **Supabase dashboard** (Auth →
