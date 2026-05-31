@@ -14,6 +14,7 @@ import { filterCandidates, interpretNL } from "@/lib/filters";
 import { DEFAULT_FILTERS } from "@/lib/constants";
 import type { CandidateFilters } from "@/lib/constants";
 import type { Candidate } from "@/lib/data/candidates";
+import type { Resource } from "@/lib/data/resources";
 import type { Json } from "@/lib/database.types";
 import {
   createIntroRequestAction,
@@ -41,6 +42,7 @@ interface CompanyPortalClientProps {
   shortlists: Shortlist[];
   featured: FeaturedWeek | null;
   reviewQueue: ReviewItem[];
+  resources: Resource[];
 }
 
 const NAV: ReadonlyArray<{ k: Tab; l: string; icon: typeof Home }> = [
@@ -58,6 +60,7 @@ export default function CompanyPortalClient({
   shortlists,
   featured,
   reviewQueue,
+  resources,
 }: CompanyPortalClientProps) {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("home");
@@ -276,7 +279,7 @@ export default function CompanyPortalClient({
                 onRemoveCandidate={removeFromShortlist}
               />
             )}
-            {tab === "resources" && <ResourcesView />}
+            {tab === "resources" && <ResourcesView resources={resources} />}
           </>
         )}
       </div>

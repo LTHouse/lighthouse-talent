@@ -6,13 +6,14 @@
 // write through server actions and then router.refresh() to pull fresh server data.
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Zap, Database, KanbanSquare, Coffee, Star, Send, Settings, Building2 } from "lucide-react";
+import { Zap, Database, KanbanSquare, Coffee, Star, Send, Settings, Building2, BookOpen } from "lucide-react";
 import SignOutButton from "@/components/SignOutButton";
 import type { Candidate } from "@/lib/data/candidates";
 import type { IntroRequest } from "@/lib/data/intros";
 import type { Company } from "@/lib/data/companies";
 import type { FeaturedWeek } from "@/lib/data/featured";
 import type { ReviewItem } from "@/lib/data/sentForReview";
+import type { Resource } from "@/lib/data/resources";
 import {
   updateCandidateAction,
   respondIntroAction,
@@ -30,10 +31,11 @@ import AdminIntroDetail from "./AdminIntroDetail";
 import AdminFeaturedTalent from "./AdminFeaturedTalent";
 import AdminSentForReview from "./AdminSentForReview";
 import AdminCompanies from "./AdminCompanies";
+import AdminResources from "./AdminResources";
 import AdminSettings from "./AdminSettings";
 
 export type AdminView =
-  | "database" | "pending" | "intros" | "featured" | "sent" | "companies" | "settings" | "profile" | "intro";
+  | "database" | "pending" | "intros" | "featured" | "sent" | "companies" | "resources" | "settings" | "profile" | "intro";
 
 const VIEW_TITLES: Record<AdminView, string> = {
   database: "Database",
@@ -42,6 +44,7 @@ const VIEW_TITLES: Record<AdminView, string> = {
   featured: "Featured Talent",
   sent: "Sent for Review",
   companies: "Companies",
+  resources: "Resources",
   settings: "Settings",
   profile: "Candidate",
   intro: "Intro Request",
@@ -61,6 +64,7 @@ interface AdminPortalProps {
   featured: FeaturedWeek | null;
   currentWeek: string;
   sentForReview: ReviewItem[];
+  resources: Resource[];
   adminName: string;
 }
 
@@ -74,6 +78,7 @@ export default function AdminPortalClient(props: AdminPortalProps) {
     props.companies.map((c) => c.id).join(","),
     props.featured ? `${props.featured.weekStarting}:${props.featured.entries.map((e) => e.candidate.id).join(".")}` : "none",
     props.sentForReview.map((r) => `${r.id}:${r.status}`).join(","),
+    props.resources.map((r) => `${r.id}:${r.published}`).join(","),
   ].join("|");
   return <AdminPortalShell key={sig} {...props} />;
 }
@@ -85,6 +90,7 @@ function AdminPortalShell({
   featured,
   currentWeek,
   sentForReview,
+  resources,
   adminName,
 }: AdminPortalProps) {
   const router = useRouter();
@@ -209,6 +215,7 @@ function AdminPortalShell({
     { k: "featured", l: "Featured Talent", icon: Star },
     { k: "sent", l: "Sent for Review", icon: Send, count: sentPending },
     { k: "companies", l: "Companies", icon: Building2 },
+    { k: "resources", l: "Resources", icon: BookOpen },
     { k: "settings", l: "Settings", icon: Settings },
   ];
 
@@ -309,6 +316,7 @@ function AdminPortalShell({
           )}
           {view === "sent" && <AdminSentForReview records={sentForReview} companies={companies} />}
           {view === "companies" && <AdminCompanies companies={companies} createCompany={createCompany} />}
+          {view === "resources" && <AdminResources resources={resources} />}
           {view === "profile" && activeCandidate && (
             <AdminCandidateProfile
               candidate={activeCandidate}

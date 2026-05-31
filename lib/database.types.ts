@@ -385,6 +385,42 @@ export type Database = {
           },
         ]
       }
+      resources: {
+        Row: {
+          category: string | null
+          created_at: string
+          description: string | null
+          external_url: string | null
+          id: string
+          published: boolean
+          storage_path: string | null
+          title: string
+          type: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          external_url?: string | null
+          id?: string
+          published?: boolean
+          storage_path?: string | null
+          title: string
+          type?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          external_url?: string | null
+          id?: string
+          published?: boolean
+          storage_path?: string | null
+          title?: string
+          type?: string | null
+        }
+        Relationships: []
+      }
       saved_searches: {
         Row: {
           company_id: string | null

@@ -10,6 +10,7 @@ import { listIntroRequests } from "@/lib/data/intros";
 import { listCompanies } from "@/lib/data/companies";
 import { getCurrentFeatured, isoWeekStart } from "@/lib/data/featured";
 import { listSentForReview } from "@/lib/data/sentForReview";
+import { listAllResources } from "@/lib/data/resources";
 import AdminPortalClient from "@/components/admin/AdminPortalClient";
 
 export default async function AdminPage() {
@@ -17,12 +18,13 @@ export default async function AdminPage() {
   if (!user) redirect("/");
   if (user.role !== "admin") redirect("/");
 
-  const [candidates, intros, companies, featured, sentForReview] = await Promise.all([
+  const [candidates, intros, companies, featured, sentForReview, resources] = await Promise.all([
     listCandidates("admin"),
     listIntroRequests(),
     listCompanies(),
     getCurrentFeatured(),
     listSentForReview(),
+    listAllResources(),
   ]);
 
   return (
@@ -33,6 +35,7 @@ export default async function AdminPage() {
       featured={featured}
       currentWeek={isoWeekStart()}
       sentForReview={sentForReview}
+      resources={resources}
       adminName={user.name}
     />
   );
