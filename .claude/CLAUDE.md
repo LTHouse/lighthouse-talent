@@ -112,3 +112,13 @@ See `README.md` for the operator-facing (non-technical) version of this.
 
 RLS is enabled on **every** table. The `supabase` skill in `.claude/skills/` is
 authoritative on the policy patterns.
+
+## Decisions
+
+- **2026-05-31 — Stay on Vite + React; Next.js migration rejected (NO-GO).** The
+  #21 spike concluded 1/5 on its rubric (GO needs 4/5). This is an authenticated
+  B2B portal, so SSR/SEO/server-component wins don't apply, while migrating the
+  working 2,700-line app is high-cost. TypeScript can be adopted incrementally on
+  Vite if wanted — that's a separate, smaller call. #22–#25 are closed `wontfix`.
+  Full reasoning: [`docs/decisions/0001-stay-on-vite.md`](../docs/decisions/0001-stay-on-vite.md).
+  **Don't re-litigate without new evidence** (e.g. a public SSR/SEO surface).
