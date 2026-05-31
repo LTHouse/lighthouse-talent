@@ -1,0 +1,26 @@
+# CI — the mechanical merge gate (CLAUDE.md): tests + a strict-TS production build
+# must pass on every PR. `next build` runs the TypeScript type-check too.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - name: Unit tests (vitest)
+        run: npm run test
+      - name: Production build + type-check
+        run: npm run build
+        env:
+          # dotenvx decrypts the committed .env at build (NEXT_PUBLIC_* inlined).
+          DOTENV_PRIVATE_KEY: ${{ secrets.DOTENV_PRIVATE_KEY }}

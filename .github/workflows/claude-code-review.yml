@@ -11,10 +11,9 @@ on:
 
 jobs:
   review:
-    # Don't review the bot's own PRs ad infinitum. Today no bot opens PRs, but if
-    # we ever wire the builder to open PRs this guard prevents an infinite
-    # review loop. (Flagged per issue #5.)
-    if: github.event.pull_request.user.login != 'claude[bot]'
+    # Skip entirely until the CLAUDE_CODE_OAUTH_TOKEN secret exists (#5) — so this
+    # doesn't red-flag every PR while inert. Also don't review the bot's own PRs.
+    if: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' && github.event.pull_request.user.login != 'claude[bot]' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
