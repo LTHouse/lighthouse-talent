@@ -436,8 +436,17 @@ export default function App() {
 }
 
 function AuthedApp() {
-  const { user, logout } = useAuth();
-  if (!user) return <LoginScreen />;
+  const { user, logout, loading, notProvisioned } = useAuth();
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="flex items-center gap-2 text-stone-400 text-sm">
+          <Zap className="text-amber-500 fill-amber-500 animate-pulse" size={18} /> Loading…
+        </div>
+      </div>
+    );
+  }
+  if (!user) return <LoginScreen notProvisioned={notProvisioned} />;
   return <SignedInShell key={user.email} user={user} logout={logout} />;
 }
 
