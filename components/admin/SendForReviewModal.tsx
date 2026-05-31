@@ -1,30 +1,29 @@
 "use client";
 
-// Send-for-review modal. Blocks send unless the candidate is ⚡ vetted in person.
-// Companies-only (per the investor-strip handoff). There is no companies data
-// layer yet, so the recipient list is empty (honest empty state) — TODO(#18):
-// load real companies and persist the sent-for-review record to Supabase.
+// Send-for-review modal (#18) — LIVE companies. Blocks send unless the candidate is
+// ⚡ vetted in person. Companies-only (per the investor-strip handoff): the recipient
+// dropdown is the live companies list; sending persists via sendForReviewAction.
 import { useState } from "react";
 import { Send, X } from "lucide-react";
 import { Button, Select, Textarea, Field } from "@/components/ui";
 import type { Candidate } from "@/lib/data/candidates";
-
-// TODO(#18): replace with a real companies data layer. Empty until then.
-const COMPANIES: { id: number; name: string }[] = [];
+import type { Company } from "@/lib/data/companies";
 
 export default function SendForReviewModal({
   candidate,
+  companies,
   onClose,
   onSend,
 }: {
   candidate: Candidate;
+  companies: Company[];
   onClose: () => void;
-  onSend: (payload: { recipientId: number; zapNote: string }) => void;
+  onSend: (payload: { companyId: string; zapNote: string }) => void;
 }) {
-  const [recipientId, setRecipientId] = useState<number | "">(COMPANIES[0]?.id ?? "");
+  const [companyId, setCompanyId] = useState<string>(companies[0]?.id ?? "");
   const [zapNote, setZapNote] = useState("");
   const isVetted = !!candidate.vettedInPerson;
-  const noCompanies = COMPANIES.length === 0;
+  const noCompanies = companies.length === 0;
 
   return (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={onClose}>
@@ -42,14 +41,14 @@ export default function SendForReviewModal({
             <p className="text-sm text-stone-500 mb-4">Zap-curated push to a company. They&apos;ll see this on their home dashboard immediately.</p>
             {noCompanies ? (
               <div className="text-sm text-stone-700 bg-amber-50 border border-amber-200 rounded-lg p-3 mb-3">
-                No companies are connected yet. Once the companies data source is wired (#18), pick a recipient here.
+                No companies are connected yet. Add one from the Companies tab before sending for review.
               </div>
             ) : (
               <Field label="Send to company" required>
                 <Select
-                  value={String(recipientId)}
-                  onChange={(v) => setRecipientId(Number(v))}
-                  options={COMPANIES.map((r) => ({ value: String(r.id), label: r.name }))}
+                  value={companyId}
+                  onChange={setCompanyId}
+                  options={companies.map((r) => ({ value: r.id, label: r.name }))}
                 />
               </Field>
             )}
@@ -61,8 +60,8 @@ export default function SendForReviewModal({
               <Button variant="ghost" onClick={onClose}>Cancel</Button>
               <Button
                 icon={Send}
-                disabled={!zapNote.trim() || noCompanies || recipientId === ""}
-                onClick={() => recipientId !== "" && onSend({ recipientId, zapNote: zapNote.trim() })}
+                disabled={!zapNote.trim() || noCompanies || companyId === ""}
+                onClick={() => companyId !== "" && onSend({ companyId, zapNote: zapNote.trim() })}
               >
                 Send for review
               </Button>

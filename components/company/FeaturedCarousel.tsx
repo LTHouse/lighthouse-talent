@@ -2,25 +2,17 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import type { Candidate } from "@/lib/data/candidates";
-import type { FeaturedItem } from "./types";
+import type { FeaturedEntry } from "./types";
 import FeaturedPreviewCard, { type FeaturedBadge } from "./FeaturedPreviewCard";
 
 interface FeaturedCarouselProps {
-  allFeatures: FeaturedItem[];
-  currentWeekStart: string;
-  candidates: Candidate[];
+  entries: FeaturedEntry[];
   onOpenCandidate: (id: string) => void;
 }
 
-function monthYearLabel(weekStartingISO: string): string {
-  const d = new Date(weekStartingISO);
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const yy = String(d.getFullYear() % 100).padStart(2, "0");
-  return `${mm}/${yy}`;
-}
+const NEW_BADGE: FeaturedBadge = { label: "NEW", className: "bg-amber-500 text-white" };
 
-export default function FeaturedCarousel({ allFeatures, currentWeekStart, candidates, onOpenCandidate }: FeaturedCarouselProps) {
+export default function FeaturedCarousel({ entries, onOpenCandidate }: FeaturedCarouselProps) {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -39,7 +31,7 @@ export default function FeaturedCarousel({ allFeatures, currentWeekStart, candid
       el.removeEventListener("scroll", update);
       window.removeEventListener("resize", update);
     };
-  }, [allFeatures.length]);
+  }, [entries.length]);
 
   function scrollBy(delta: number) {
     scrollerRef.current?.scrollBy({ left: delta, behavior: "smooth" });
@@ -62,14 +54,15 @@ export default function FeaturedCarousel({ allFeatures, currentWeekStart, candid
         </button>
       )}
       <div ref={scrollerRef} className="flex gap-3 overflow-x-auto snap-x pb-2 -mx-1 px-1 scroll-smooth">
-        {allFeatures.map((f) => {
-          const c = candidates.find((cand) => cand.id === f.candidateId);
-          if (!c) return null;
-          const badge: FeaturedBadge = f.weekStarting === currentWeekStart
-            ? { label: "NEW", className: "bg-amber-500 text-white" }
-            : { label: monthYearLabel(f.weekStarting), className: "bg-stone-100 text-stone-600 border border-stone-200" };
-          return <FeaturedPreviewCard key={f.candidateId} candidate={c} note={f.curatorNote} badge={badge} onOpen={() => onOpenCandidate(c.id)} />;
-        })}
+        {entries.map((e) => (
+          <FeaturedPreviewCard
+            key={e.candidate.id}
+            candidate={e.candidate}
+            note={e.curatorNote ?? undefined}
+            badge={NEW_BADGE}
+            onOpen={() => onOpenCandidate(e.candidate.id)}
+          />
+        ))}
       </div>
     </div>
   );

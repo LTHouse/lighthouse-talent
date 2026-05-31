@@ -10,7 +10,7 @@ interface CandidateCardMVPProps {
   candidate: Candidate;
   onOpen: () => void;
   onRequestIntro: () => void;
-  onAddToShortlist: (shortlistId: number) => void;
+  onAddToShortlist: (shortlistId: string) => void;
   shortlists: Shortlist[];
 }
 

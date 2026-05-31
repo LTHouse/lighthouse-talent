@@ -1,44 +1,15 @@
-// Local-state types for the company portal. These back the not-yet-persisted
-// surfaces (saved searches, shortlists, featured carousel, review queue) with
-// honest-empty client state. The candidate data itself is LIVE Supabase data.
-// TODO(#16/#17/#18): replace these client-state shapes with Supabase tables.
-import type { CandidateFilters } from "@/lib/constants";
+// Company portal view types. Saved searches, shortlists, the featured carousel,
+// and the review queue are now LIVE Supabase data (re-exported from the data
+// layer). The candidate data itself is also LIVE Supabase data.
+export type { SavedSearch, Shortlist } from "@/lib/data/workspace";
+export type { ReviewItem } from "@/lib/data/sentForReview";
+export type { FeaturedEntry, FeaturedWeek } from "@/lib/data/featured";
 
 export type SortBy = "yoe" | "recent" | "name";
 
-export interface SavedSearch {
-  id: number;
-  name: string;
-  kind: "filter" | "advanced";
-  query?: string;
-  filters?: CandidateFilters;
-  createdAt: string;
-  results: number;
-}
-
-export interface Shortlist {
-  id: number;
-  name: string;
-  candidateIds: string[];
-  createdAt: string;
-}
-
-export type ReviewStatus = "pending" | "interested" | "passed" | "discussion_requested";
-
-export interface ReviewItem {
-  id: number;
-  candidateId: string;
-  zapNote: string;
-  sentAt: string;
-  status: ReviewStatus;
-  responseReason?: string | null;
-}
-
-export interface FeaturedItem {
-  candidateId: string;
-  curatorNote?: string;
-  weekStarting: string; // ISO date; the week the candidate was featured
-}
+// The company can respond to a review item with one of these (matches
+// respondToReviewAction). Pending is the un-acted-on state.
+export type ReviewStatus = "pending" | "interested" | "passed";
 
 // ── Resources (static content, ported from the Vite app — NOT candidate data) ──
 export type ResourceType = "article" | "download";

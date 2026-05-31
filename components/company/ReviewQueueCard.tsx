@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Coffee, MessageSquare } from "lucide-react";
+import { Coffee } from "lucide-react";
 import { Card, Avatar, VettedBadge, RelocateBadge, Tag, Button, Select, Textarea } from "@/components/ui";
 import type { Candidate } from "@/lib/data/candidates";
 import type { ReviewItem, ReviewStatus } from "./types";
@@ -17,7 +17,6 @@ interface ReviewQueueCardProps {
 const STATUS_LABELS: Record<string, string> = {
   interested: "Interested",
   passed: "Passed",
-  discussion_requested: "Discussion requested",
 };
 
 export default function ReviewQueueCard({ review, candidate, onOpen, onRespond, onRequestIntro }: ReviewQueueCardProps) {
@@ -50,11 +49,12 @@ export default function ReviewQueueCard({ review, candidate, onOpen, onRespond, 
           <div className="text-xs text-stone-500 truncate">{candidate.currentRole}{candidate.currentCompany && ` · ${candidate.currentCompany}`}</div>
         </div>
       </div>
-      <blockquote className="border-l-2 border-amber-300 pl-2.5 mt-2.5 text-xs text-stone-700 italic line-clamp-2">&ldquo;{review.zapNote}&rdquo;</blockquote>
+      {review.zapNote && (
+        <blockquote className="border-l-2 border-amber-300 pl-2.5 mt-2.5 text-xs text-stone-700 italic line-clamp-2">&ldquo;{review.zapNote}&rdquo;</blockquote>
+      )}
       <div className="flex items-center gap-2 mt-3 flex-wrap" onClick={(e) => e.stopPropagation()}>
         <Button size="sm" icon={Coffee} onClick={() => { onRespond("interested"); onRequestIntro(); }}>Interested</Button>
         <button onClick={() => setShowPass(true)} className="px-2.5 py-1.5 text-xs rounded-lg border border-stone-300 text-stone-700 hover:border-stone-400 font-semibold">Pass</button>
-        <button onClick={() => onRespond("discussion_requested", "Want to discuss with Zap")} className="text-xs text-stone-500 hover:text-amber-600 inline-flex items-center gap-1"><MessageSquare size={11} /> Discuss</button>
       </div>
       {showPass && (
         <div className="mt-2.5 p-2.5 bg-stone-50 border border-stone-200 rounded-lg" onClick={(e) => e.stopPropagation()}>

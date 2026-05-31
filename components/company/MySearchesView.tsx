@@ -1,16 +1,17 @@
 "use client";
 
-import { Search } from "lucide-react";
+import { Search, Trash2 } from "lucide-react";
 import { Card, Tag, Button } from "@/components/ui";
 import type { SavedSearch } from "./types";
 
 interface MySearchesViewProps {
   searches: SavedSearch[];
   onRunSearch: (s: SavedSearch) => void;
+  onDeleteSearch: (id: string) => void;
   onNewSearch: () => void;
 }
 
-export default function MySearchesView({ searches, onRunSearch, onNewSearch }: MySearchesViewProps) {
+export default function MySearchesView({ searches, onRunSearch, onDeleteSearch, onNewSearch }: MySearchesViewProps) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
@@ -35,13 +36,16 @@ export default function MySearchesView({ searches, onRunSearch, onNewSearch }: M
           <tbody>
             {searches.map((s) => (
               <tr key={s.id} className="border-b border-stone-200 hover:bg-stone-50 cursor-pointer" onClick={() => onRunSearch(s)}>
-                <td className="p-3 font-bold">{s.name}</td>
+                <td className="p-3 font-bold">{s.name ?? "Untitled search"}</td>
                 <td className="p-3"><Tag size="sm" color={s.kind === "advanced" ? "purple" : "yellow"}>{s.kind === "advanced" ? "Advanced" : "Filter"}</Tag></td>
                 <td className="p-3 text-xs text-stone-500 hidden sm:table-cell">Direct</td>
-                <td className="p-3 text-xs text-stone-500 hidden md:table-cell">{s.createdAt}</td>
-                <td className="p-3 text-sm tabular-nums">{s.results || "—"}</td>
-                <td className="p-3 text-right">
-                  <Button size="sm" variant="ghost" icon={Search} onClick={() => onRunSearch(s)}>Run</Button>
+                <td className="p-3 text-xs text-stone-500 hidden md:table-cell">{s.createdAt.slice(0, 10)}</td>
+                <td className="p-3 text-sm tabular-nums">{s.results ?? "—"}</td>
+                <td className="p-3 text-right" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center justify-end gap-1">
+                    <Button size="sm" variant="ghost" icon={Search} onClick={() => onRunSearch(s)}>Run</Button>
+                    <Button size="sm" variant="ghost" icon={Trash2} onClick={() => onDeleteSearch(s.id)}>Delete</Button>
+                  </div>
                 </td>
               </tr>
             ))}

@@ -24,7 +24,7 @@ interface CompanySearchProps {
   onOpenCandidate: (id: string) => void;
   onRequestIntro: (id: string) => void;
   onSaveSearch: () => void;
-  onAddToShortlist: (shortlistId: number, candidateId: string) => void;
+  onAddToShortlist: (shortlistId: string, candidateId: string) => void;
   shortlists: Shortlist[];
 }
 
