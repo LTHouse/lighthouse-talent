@@ -91,7 +91,7 @@ export default function IntakeFlow() {
             error={error}
           />
         )}
-        {step === 3 && <TalentConfirmation email={profile.email} />}
+        {step === 3 && <TalentConfirmation />}
       </div>
     </div>
   );

@@ -61,36 +61,15 @@ export async function createIntroRequestAction(candidateId: string, message: str
   return { ok: true };
 }
 
-// Admin approves / declines an intro request. On approval, fire the (toggle-gated)
-// Resend email Edge Function — it no-ops unless the outbound_emails master toggle
-// is on, so this is safe to always call (#17).
+// Admin approves / declines an intro request. v1 sends NO email — Zap does the
+// intro by hand from the admin queue; this just records her decision so the queue
+// reflects reality.
 export async function respondIntroAction(id: string, status: "approved" | "declined"): Promise<{ ok: boolean; error?: string }> {
   const user = await getSessionUser();
   if (user?.role !== "admin") return { ok: false, error: "Not authorized." };
   const supabase = await createClient();
   const { error } = await supabase.from("intro_requests").update({ status }).eq("id", id);
   if (error) return { ok: false, error: error.message };
-
-  if (status === "approved") {
-    const { data: row } = await supabase
-      .from("intro_requests")
-      .select("message, candidates(first_name, last_name, email), companies(name)")
-      .eq("id", id)
-      .maybeSingle();
-    const cand = row?.candidates;
-    if (cand?.email) {
-      // Best-effort; the function self-gates on the master toggle.
-      await supabase.functions.invoke("send-intro-email", {
-        body: {
-          to: cand.email,
-          candidateName: [cand.first_name, cand.last_name].filter(Boolean).join(" "),
-          companyName: row?.companies?.name ?? "A company",
-          reason: row?.message ?? "",
-        },
-      }).catch(() => { /* email is non-critical; never block the approval */ });
-    }
-  }
-
   revalidatePath("/admin");
   return { ok: true };
 }
