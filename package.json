@@ -10,7 +10,8 @@
     "prepare": "git config core.hooksPath .githooks || true",
     "gen:types": "dotenvx run -f .env.ops.local -- sh -c 'npx -y supabase@latest gen types typescript --project-id rdnfckhtheescralfkwn > lib/database.types.ts'",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.3",
@@ -23,6 +24,7 @@
   },
   "devDependencies": {
     "@dotenvx/dotenvx": "^1.69.2",
+    "@playwright/test": "^1.60.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
