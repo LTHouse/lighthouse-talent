@@ -1,0 +1,13 @@
+#!/usr/bin/env sh
+# Refuse commits that would leak a plaintext secret in .env.
+# dotenvx ext precommit scans staged .env files and fails if any value is
+# unencrypted (i.e. a real secret about to be committed). The committed .env is
+# public-key encrypted; .env.keys and .env.ops.local are gitignored.
+#
+# Wired automatically via `core.hooksPath = .githooks` (set by the package.json
+# "prepare" script, which runs on every `npm install`).
+npx --no-install dotenvx ext precommit || {
+  echo "✋ pre-commit blocked: a plaintext secret was detected in a .env file."
+  echo "   Encrypt it with: npx dotenvx encrypt   (never commit a raw secret)"
+  exit 1
+}
