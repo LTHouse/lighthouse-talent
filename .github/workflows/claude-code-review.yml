@@ -1,0 +1,32 @@
+# Automatic reviewer — runs the reviewer subagent on every PR.
+# Same OAuth-token auth as claude.yml (never an API key).
+#
+# INERT until the same one-time admin setup as claude.yml is complete
+# (Claude GitHub App installed + CLAUDE_CODE_OAUTH_TOKEN secret).
+name: claude-code-review
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  review:
+    # Don't review the bot's own PRs ad infinitum. Today no bot opens PRs, but if
+    # we ever wire the builder to open PRs this guard prevents an infinite
+    # review loop. (Flagged per issue #5.)
+    if: github.event.pull_request.user.login != 'claude[bot]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Claude reviewer
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # Dispatch the project's reviewer subagent (.claude/agents/reviewer.md).
+          claude_args: "--agent reviewer --max-turns 10"

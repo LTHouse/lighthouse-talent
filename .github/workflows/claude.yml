@@ -1,0 +1,41 @@
+# @claude builder — responds when an operator tags @claude in an issue or comment.
+# AUTH: Claude Code OAuth token (Pro/Max subscription), never an API key, to cap
+# cost at the existing subscription quota.
+#
+# INERT until an admin completes the one-time setup (see README "Set up Claude"):
+#   1. Install the Claude GitHub App (https://github.com/apps/claude) on this repo.
+#   2. `claude setup-token` locally to generate an OAuth token.
+#   3. Add it to GH repo secrets as CLAUDE_CODE_OAUTH_TOKEN.
+name: claude
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  issues:
+    types: [opened, assigned]
+
+jobs:
+  builder:
+    # Only run when @claude is mentioned.
+    if: |
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'issues' && contains(github.event.issue.body, '@claude'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Claude builder
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # Dispatch the project's builder subagent (.claude/agents/builder.md).
+          claude_args: "--agent builder --max-turns 25"
