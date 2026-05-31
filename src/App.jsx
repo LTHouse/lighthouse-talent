@@ -16,6 +16,8 @@ import { COMPANIES, SAVED_SEARCHES, SHORTLISTS, RESOURCES, INITIAL_INTRO_REQUEST
 import { CandidatesProvider, useCandidates, updateCandidate as persistCandidate } from "./lib/data.jsx";
 import { AuthProvider, useAuth, LoginScreen } from "./auth.jsx";
 import { enrichFromLinkedIn, isStale } from "./lib/linkedinEnrich.js";
+import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 
 // ============================================================
 // ADDENDUM ENRICHMENT — vetted_in_person + computed featured flag
@@ -395,7 +397,14 @@ function interpretNL(query) {
 // TOP-LEVEL APP
 // ============================================================
 export default function App() {
-  return <AuthProvider><AuthedApp /></AuthProvider>;
+  return (
+    <AuthProvider>
+      <AuthedApp />
+      {/* Free, privacy-friendly observability (#19): page views + Core Web Vitals. */}
+      <Analytics />
+      <SpeedInsights />
+    </AuthProvider>
+  );
 }
 
 function AuthedApp() {
