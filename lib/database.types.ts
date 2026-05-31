@@ -426,6 +426,57 @@ export type Database = {
           },
         ]
       }
+      sent_for_review: {
+        Row: {
+          candidate_id: string | null
+          created_at: string
+          id: string
+          responded_at: string | null
+          response_reason: string | null
+          sent_by: string | null
+          sent_to_company_id: string | null
+          status: string
+          zap_note: string | null
+        }
+        Insert: {
+          candidate_id?: string | null
+          created_at?: string
+          id?: string
+          responded_at?: string | null
+          response_reason?: string | null
+          sent_by?: string | null
+          sent_to_company_id?: string | null
+          status?: string
+          zap_note?: string | null
+        }
+        Update: {
+          candidate_id?: string | null
+          created_at?: string
+          id?: string
+          responded_at?: string | null
+          response_reason?: string | null
+          sent_by?: string | null
+          sent_to_company_id?: string | null
+          status?: string
+          zap_note?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sent_for_review_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sent_for_review_sent_to_company_id_fkey"
+            columns: ["sent_to_company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shortlists: {
         Row: {
           candidate_ids: string[]

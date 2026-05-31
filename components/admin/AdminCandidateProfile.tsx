@@ -10,20 +10,23 @@ import { Button, Card, Textarea, Select } from "@/components/ui";
 import { Avatar, VettedBadge } from "@/components/ui";
 import { STATUS_LABELS, STATUS_ORDER, RELOCATION_LABELS } from "@/lib/constants";
 import type { Candidate, CandidateStatus } from "@/lib/data/candidates";
+import type { Company } from "@/lib/data/companies";
 import type { CandidatePatch } from "@/app/actions";
 import SendForReviewModal from "./SendForReviewModal";
 
 export default function AdminCandidateProfile({
   candidate,
+  companies,
   updateCandidate,
   onBack,
   sendForReview,
   adminName,
 }: {
   candidate: Candidate;
+  companies: Company[];
   updateCandidate: (id: string, patch: CandidatePatch) => void;
   onBack: () => void;
-  sendForReview: (input: { candidateId: string; recipientId: number; zapNote: string }) => void;
+  sendForReview: (input: { candidateId: string; companyId: string; zapNote: string }) => void;
   adminName: string;
 }) {
   const [notes, setNotes] = useState(candidate.adminNotes || "");
@@ -89,9 +92,10 @@ export default function AdminCandidateProfile({
       {showSendModal && (
         <SendForReviewModal
           candidate={candidate}
+          companies={companies}
           onClose={() => setShowSendModal(false)}
           onSend={(payload) => {
-            sendForReview({ candidateId: candidate.id, recipientId: payload.recipientId, zapNote: payload.zapNote });
+            sendForReview({ candidateId: candidate.id, companyId: payload.companyId, zapNote: payload.zapNote });
             setShowSendModal(false);
           }}
         />

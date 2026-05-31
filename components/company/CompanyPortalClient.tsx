@@ -2,20 +2,28 @@
 
 // Company portal shell — owns all interactive state: tab nav, the filter-first
 // search (with the Advanced NL box), candidate drill-in, and the intro modal.
-// Candidates are LIVE Supabase data passed from the server component; search and
-// filtering happen client-side over that array (same behavior as the Vite app).
-// Saved searches, shortlists, the featured carousel, and the review queue are
-// local component state for now (honest-empty start).
-// TODO(#16/#17/#18): wire saved searches / shortlists / featured / review queue to Supabase.
+// All data (candidates, saved searches, shortlists, featured week, review queue)
+// is LIVE Supabase data passed from the server component. Search and filtering
+// happen client-side over the candidates array; writes go through Server Actions
+// and we call router.refresh() to pull fresh data.
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Zap, Home, Search, BookOpenCheck, Star, FileText } from "lucide-react";
 import SignOutButton from "@/components/SignOutButton";
 import { filterCandidates, interpretNL } from "@/lib/filters";
 import { DEFAULT_FILTERS } from "@/lib/constants";
 import type { CandidateFilters } from "@/lib/constants";
 import type { Candidate } from "@/lib/data/candidates";
-import { createIntroRequestAction } from "@/app/actions";
-import type { FeaturedItem, ReviewItem, ReviewStatus, SavedSearch, Shortlist } from "./types";
+import type { Json } from "@/lib/database.types";
+import {
+  createIntroRequestAction,
+  saveSearchAction,
+  deleteSavedSearchAction,
+  createShortlistAction,
+  setShortlistCandidatesAction,
+  respondToReviewAction,
+} from "@/app/actions";
+import type { FeaturedWeek, ReviewItem, ReviewStatus, SavedSearch, Shortlist } from "./types";
 import HomeDashboard from "./HomeDashboard";
 import CompanySearch from "./CompanySearch";
 import CandidateProfile from "./CandidateProfile";
@@ -29,6 +37,10 @@ type Tab = "home" | "search" | "searches" | "shortlists" | "resources";
 interface CompanyPortalClientProps {
   candidates: Candidate[];
   companyName: string;
+  savedSearches: SavedSearch[];
+  shortlists: Shortlist[];
+  featured: FeaturedWeek | null;
+  reviewQueue: ReviewItem[];
 }
 
 const NAV: ReadonlyArray<{ k: Tab; l: string; icon: typeof Home }> = [
@@ -39,10 +51,15 @@ const NAV: ReadonlyArray<{ k: Tab; l: string; icon: typeof Home }> = [
   { k: "resources", l: "Resources", icon: FileText },
 ];
 
-// Current featured week — local-state placeholder until the featured table exists.
-const NOW_WEEK = new Date().toISOString().slice(0, 10);
-
-export default function CompanyPortalClient({ candidates, companyName }: CompanyPortalClientProps) {
+export default function CompanyPortalClient({
+  candidates,
+  companyName,
+  savedSearches,
+  shortlists,
+  featured,
+  reviewQueue,
+}: CompanyPortalClientProps) {
+  const router = useRouter();
   const [tab, setTab] = useState<Tab>("home");
   const [filters, setFilters] = useState<CandidateFilters>(DEFAULT_FILTERS);
   const [nlQuery, setNlQuery] = useState("");
@@ -55,14 +72,12 @@ export default function CompanyPortalClient({ candidates, companyName }: Company
   const [introSubmitting, setIntroSubmitting] = useState(false);
   const [introError, setIntroError] = useState<string | null>(null);
   const [introToast, setIntroToast] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
-  // ── Local-state surfaces (honest-empty start; not yet persisted) ──
-  // TODO(#16/#17/#18): wire to Supabase.
-  const [searches, setSearches] = useState<SavedSearch[]>([]);
-  const [shortlists, setShortlists] = useState<Shortlist[]>([]);
-  const [featuredItems] = useState<FeaturedItem[]>([]);
-  const [reviewQueue, setReviewQueue] = useState<ReviewItem[]>([]);
-  const weeklyNote: string | null = null;
+  function flashError(error?: string) {
+    setActionError(error ?? "Something went wrong. Please try again.");
+    window.setTimeout(() => setActionError(null), 6000);
+  }
 
   const activeCandidate = useMemo(
     () => (activeCandidateId ? candidates.find((c) => c.id === activeCandidateId) ?? null : null),
@@ -103,53 +118,70 @@ export default function CompanyPortalClient({ candidates, companyName }: Company
     }, 1200);
   }
 
-  function saveCurrentSearch() {
+  // Advanced searches merge the NL interpretation into `filters` before running,
+  // so the persisted `filters` object captures the full intent for both kinds.
+  // Loading therefore always re-applies `filters` and runs the filter search.
+  async function saveCurrentSearch() {
     const name = window.prompt("Name this saved search:", "");
     if (!name) return;
-    const record: SavedSearch = {
-      id: Date.now(),
+    const res = await saveSearchAction({
       name,
       kind: usedAdvanced ? "advanced" : "filter",
-      query: usedAdvanced ? nlQuery : undefined,
-      filters: usedAdvanced ? undefined : filters,
-      createdAt: new Date().toISOString().slice(0, 10),
+      // CandidateFilters is plain JSON-serializable data (the column is jsonb).
+      filters: filters as unknown as Json,
       results: results.length,
-    };
-    setSearches((arr) => [...arr, record]);
+    });
+    if (res.ok) router.refresh();
+    else flashError(res.error);
+  }
+
+  async function deleteSearch(id: string) {
+    const res = await deleteSavedSearchAction(id);
+    if (res.ok) router.refresh();
+    else flashError(res.error);
   }
 
   function loadSearch(s: SavedSearch) {
-    if (s.kind === "filter") {
-      const next = { ...DEFAULT_FILTERS, ...s.filters };
-      setFilters(next);
-      setNlQuery("");
-      setUsedAdvanced(false);
-      setTab("search");
-      setActiveCandidateId(null);
-      window.setTimeout(() => runFilterSearch(next), 50);
-    } else {
-      setNlQuery(s.query ?? "");
-      setUsedAdvanced(true);
-      setTab("search");
-      setActiveCandidateId(null);
-      window.setTimeout(() => runAdvancedSearch(), 50);
-    }
+    const next: CandidateFilters = { ...DEFAULT_FILTERS, ...s.filters };
+    setFilters(next);
+    setNlQuery("");
+    setUsedAdvanced(false);
+    setTab("search");
+    setActiveCandidateId(null);
+    window.setTimeout(() => runFilterSearch(next), 50);
   }
 
-  function addToShortlist(shortlistId: number, candidateId: string) {
-    setShortlists((arr) =>
-      arr.map((s) =>
-        s.id === shortlistId
-          ? { ...s, candidateIds: Array.from(new Set([...s.candidateIds, candidateId])) }
-          : s,
-      ),
-    );
+  async function createShortlist(name: string) {
+    const res = await createShortlistAction(name);
+    if (res.ok) router.refresh();
+    else flashError(res.error);
   }
 
-  function respondToReview(reviewId: number, status: ReviewStatus, reason?: string) {
-    setReviewQueue((arr) =>
-      arr.map((r) => (r.id === reviewId ? { ...r, status, responseReason: reason ?? null } : r)),
+  async function addToShortlist(shortlistId: string, candidateId: string) {
+    const sl = shortlists.find((s) => s.id === shortlistId);
+    if (!sl) return;
+    if (sl.candidateIds.includes(candidateId)) return;
+    const res = await setShortlistCandidatesAction(shortlistId, [...sl.candidateIds, candidateId]);
+    if (res.ok) router.refresh();
+    else flashError(res.error);
+  }
+
+  async function removeFromShortlist(shortlistId: string, candidateId: string) {
+    const sl = shortlists.find((s) => s.id === shortlistId);
+    if (!sl) return;
+    const res = await setShortlistCandidatesAction(
+      shortlistId,
+      sl.candidateIds.filter((id) => id !== candidateId),
     );
+    if (res.ok) router.refresh();
+    else flashError(res.error);
+  }
+
+  async function respondToReview(reviewId: string, status: ReviewStatus, reason?: string) {
+    if (status === "pending") return;
+    const res = await respondToReviewAction(reviewId, status, reason);
+    if (res.ok) router.refresh();
+    else flashError(res.error);
   }
 
   async function submitIntroRequest(candidateId: string, reason: string) {
@@ -207,12 +239,9 @@ export default function CompanyPortalClient({ candidates, companyName }: Company
             {tab === "home" && (
               <HomeDashboard
                 companyName={companyName}
-                candidates={candidates}
                 reviewQueue={reviewQueue}
-                featuredItems={featuredItems}
-                currentWeekStart={NOW_WEEK}
-                weeklyNote={weeklyNote}
-                searches={searches}
+                featured={featured}
+                searches={savedSearches}
                 shortlists={shortlists}
                 onOpenCandidate={(id) => setActiveCandidateId(id)}
                 onRespondReview={respondToReview}
@@ -237,8 +266,16 @@ export default function CompanyPortalClient({ candidates, companyName }: Company
                 shortlists={shortlists}
               />
             )}
-            {tab === "searches" && <MySearchesView searches={searches} onRunSearch={loadSearch} onNewSearch={() => setTab("search")} />}
-            {tab === "shortlists" && <ShortlistsView shortlists={shortlists} candidates={candidates} onOpenCandidate={(id) => setActiveCandidateId(id)} />}
+            {tab === "searches" && <MySearchesView searches={savedSearches} onRunSearch={loadSearch} onDeleteSearch={deleteSearch} onNewSearch={() => setTab("search")} />}
+            {tab === "shortlists" && (
+              <ShortlistsView
+                shortlists={shortlists}
+                candidates={candidates}
+                onOpenCandidate={(id) => setActiveCandidateId(id)}
+                onCreateShortlist={createShortlist}
+                onRemoveCandidate={removeFromShortlist}
+              />
+            )}
             {tab === "resources" && <ResourcesView />}
           </>
         )}
@@ -255,6 +292,11 @@ export default function CompanyPortalClient({ candidates, companyName }: Company
       {introToast && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 rounded-xl bg-black text-white text-sm px-4 py-3 shadow-lg flex items-center gap-2">
           <Zap size={14} className="text-amber-400 fill-amber-400" /> {introToast}
+        </div>
+      )}
+      {actionError && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 rounded-xl bg-red-600 text-white text-sm px-4 py-3 shadow-lg max-w-md text-center">
+          {actionError}
         </div>
       )}
     </div>

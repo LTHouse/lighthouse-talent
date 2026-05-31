@@ -1,26 +1,39 @@
 "use client";
 
 // Admin tabbed shell. Owns the active view, the candidate-profile / intro drill-ins,
-// and the optimistic write helpers. Candidates + intros are LIVE Supabase data
-// (writes go through server actions with optimistic local state + rollback).
-// Featured / Sent-for-Review / Settings are local-state-only ports (see #17/#18).
+// and the write helpers. All sub-features are now LIVE Supabase data: candidates +
+// intros use optimistic local edits; companies, featured talent, and sent-for-review
+// write through server actions and then router.refresh() to pull fresh server data.
 import { useState } from "react";
-import { Zap, Database, KanbanSquare, Coffee, Star, Send, Settings } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Zap, Database, KanbanSquare, Coffee, Star, Send, Settings, Building2 } from "lucide-react";
 import SignOutButton from "@/components/SignOutButton";
 import type { Candidate } from "@/lib/data/candidates";
 import type { IntroRequest } from "@/lib/data/intros";
-import { updateCandidateAction, respondIntroAction, type CandidatePatch } from "@/app/actions";
+import type { Company } from "@/lib/data/companies";
+import type { FeaturedWeek } from "@/lib/data/featured";
+import type { ReviewItem } from "@/lib/data/sentForReview";
+import {
+  updateCandidateAction,
+  respondIntroAction,
+  createCompanyAction,
+  setFeaturedCandidateAction,
+  upsertFeaturedWeekAction,
+  sendForReviewAction,
+  type CandidatePatch,
+} from "@/app/actions";
 import AdminDatabase from "./AdminDatabase";
 import AdminPending from "./AdminPending";
 import AdminCandidateProfile from "./AdminCandidateProfile";
 import AdminIntroRequests from "./AdminIntroRequests";
 import AdminIntroDetail from "./AdminIntroDetail";
 import AdminFeaturedTalent from "./AdminFeaturedTalent";
-import AdminSentForReview, { type SentForReviewRecord } from "./AdminSentForReview";
+import AdminSentForReview from "./AdminSentForReview";
+import AdminCompanies from "./AdminCompanies";
 import AdminSettings from "./AdminSettings";
 
 export type AdminView =
-  | "database" | "pending" | "intros" | "featured" | "sent" | "settings" | "profile" | "intro";
+  | "database" | "pending" | "intros" | "featured" | "sent" | "companies" | "settings" | "profile" | "intro";
 
 const VIEW_TITLES: Record<AdminView, string> = {
   database: "Database",
@@ -28,6 +41,7 @@ const VIEW_TITLES: Record<AdminView, string> = {
   intros: "Intro Requests",
   featured: "Featured Talent",
   sent: "Sent for Review",
+  companies: "Companies",
   settings: "Settings",
   profile: "Candidate",
   intro: "Intro Request",
@@ -43,22 +57,37 @@ interface NavItem {
 interface AdminPortalProps {
   candidates: Candidate[];
   intros: IntroRequest[];
+  companies: Company[];
+  featured: FeaturedWeek | null;
+  currentWeek: string;
+  sentForReview: ReviewItem[];
   adminName: string;
 }
 
 // Outer wrapper: re-key the stateful shell on the server-data identity so that when
-// `revalidatePath("/admin")` returns fresh props, the optimistic local state resets
-// cleanly to the new server truth (no mirror effects / cascading-render lint).
+// fresh props arrive (router.refresh / revalidatePath), the optimistic local state
+// resets cleanly to the new server truth (no mirror effects / cascading-render lint).
 export default function AdminPortalClient(props: AdminPortalProps) {
-  const sig = `${props.candidates.map((c) => c.id).join(",")}|${props.intros.map((r) => `${r.id}:${r.status}`).join(",")}`;
+  const sig = [
+    props.candidates.map((c) => c.id).join(","),
+    props.intros.map((r) => `${r.id}:${r.status}`).join(","),
+    props.companies.map((c) => c.id).join(","),
+    props.featured ? `${props.featured.weekStarting}:${props.featured.entries.map((e) => e.candidate.id).join(".")}` : "none",
+    props.sentForReview.map((r) => `${r.id}:${r.status}`).join(","),
+  ].join("|");
   return <AdminPortalShell key={sig} {...props} />;
 }
 
 function AdminPortalShell({
   candidates: initialCandidates,
   intros: initialIntros,
+  companies,
+  featured,
+  currentWeek,
+  sentForReview,
   adminName,
 }: AdminPortalProps) {
+  const router = useRouter();
   const [view, setView] = useState<AdminView>("database");
   const [activeCandidateId, setActiveCandidateId] = useState<string | null>(null);
   const [activeIntroId, setActiveIntroId] = useState<string | null>(null);
@@ -69,9 +98,6 @@ function AdminPortalShell({
   const [intros, setIntros] = useState<IntroRequest[]>(initialIntros);
 
   const [writeError, setWriteError] = useState<string | null>(null);
-
-  // TODO(#18): wire Sent-for-Review to Supabase. Local-state-only for now (honest empty state).
-  const [sentForReview, setSentForReview] = useState<SentForReviewRecord[]>([]);
 
   // Optimistic admin write (#14): show the change instantly, persist via the server
   // action, and roll back + surface the error on failure (never silent).
@@ -109,25 +135,72 @@ function AdminPortalShell({
       });
   }
 
-  function sendForReview(input: { candidateId: string; recipientId: number; zapNote: string }) {
-    // TODO(#18): persist to Supabase. Local-state-only record for now.
-    const rec: SentForReviewRecord = {
-      id: "sr_" + Date.now(),
-      candidateId: input.candidateId,
-      sentToCompanyId: input.recipientId,
-      sentBy: adminName || "Zap",
-      sentAt: new Date().toISOString().slice(0, 10),
-      zapNote: input.zapNote,
-      status: "pending",
-      responseAt: null,
-      responseReason: null,
-    };
-    setSentForReview((rs) => [...rs, rec]);
+  // Server-action writes for the live sub-features. On success, router.refresh()
+  // pulls fresh server data (the shell re-keys to it); on failure, surface the error.
+  async function createCompany(input: { name: string; stage?: string; industry?: string; team?: number }) {
+    setWriteError(null);
+    try {
+      const res = await createCompanyAction(input);
+      if (!res.ok) {
+        setWriteError(res.error || "Couldn't add that company.");
+        return;
+      }
+      router.refresh();
+    } catch (err: unknown) {
+      setWriteError(err instanceof Error ? err.message : "Couldn't add that company.");
+    }
+  }
+
+  async function setFeaturedCandidate(candidateId: string, present: boolean, curatorNote?: string) {
+    setWriteError(null);
+    try {
+      const res = await setFeaturedCandidateAction(currentWeek, candidateId, present, curatorNote);
+      if (!res.ok) {
+        setWriteError(res.error || "Couldn't update the featured list.");
+        return;
+      }
+      router.refresh();
+    } catch (err: unknown) {
+      setWriteError(err instanceof Error ? err.message : "Couldn't update the featured list.");
+    }
+  }
+
+  async function upsertWeeklyNote(note: string) {
+    setWriteError(null);
+    try {
+      const res = await upsertFeaturedWeekAction(currentWeek, note);
+      if (!res.ok) {
+        setWriteError(res.error || "Couldn't save the weekly note.");
+        return;
+      }
+      router.refresh();
+    } catch (err: unknown) {
+      setWriteError(err instanceof Error ? err.message : "Couldn't save the weekly note.");
+    }
+  }
+
+  async function sendForReview(input: { candidateId: string; companyId: string; zapNote: string }) {
+    setWriteError(null);
+    try {
+      const res = await sendForReviewAction({
+        candidateId: input.candidateId,
+        companyId: input.companyId,
+        note: input.zapNote,
+      });
+      if (!res.ok) {
+        setWriteError(res.error || "Couldn't send that candidate for review.");
+        return;
+      }
+      router.refresh();
+    } catch (err: unknown) {
+      setWriteError(err instanceof Error ? err.message : "Couldn't send that candidate for review.");
+    }
   }
 
   const pendingIntros = intros.filter((r) => r.status === "pending").length;
   const sentPending = sentForReview.filter((r) => r.status === "pending").length;
-  const sentActioned = sentForReview.filter((r) => r.status !== "pending" && r.responseAt).length;
+  const sentActioned = sentForReview.filter((r) => r.status !== "pending" && r.respondedAt).length;
+  const featuredCount = featured?.entries.length ?? 0;
 
   const navItems: NavItem[] = [
     { k: "database", l: "Database", icon: Database },
@@ -135,6 +208,7 @@ function AdminPortalShell({
     { k: "intros", l: "Intro Requests", icon: Coffee, count: pendingIntros },
     { k: "featured", l: "Featured Talent", icon: Star },
     { k: "sent", l: "Sent for Review", icon: Send, count: sentPending },
+    { k: "companies", l: "Companies", icon: Building2 },
     { k: "settings", l: "Settings", icon: Settings },
   ];
 
@@ -181,7 +255,7 @@ function AdminPortalShell({
         <div className="mt-6 pt-4 border-t border-stone-200">
           <div className="text-[10px] uppercase tracking-wider text-stone-500 font-bold px-2 mb-2">At a glance</div>
           <div className="px-2 space-y-2 text-[11px] text-stone-600">
-            <div><div className="font-bold text-amber-700">🌟 Featured</div><div>0 this week · curated below</div></div>
+            <div><div className="font-bold text-amber-700">🌟 Featured</div><div>{featuredCount} this week · curated below</div></div>
             <div><div className="font-bold text-amber-700">📨 Sent for review</div><div>{sentPending} pending · {sentActioned} actioned</div></div>
           </div>
         </div>
@@ -201,7 +275,7 @@ function AdminPortalShell({
         <div className="p-6">
           {writeError && (
             <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center justify-between">
-              <span>Couldn&apos;t save: {writeError} — your change was rolled back.</span>
+              <span>Couldn&apos;t save: {writeError}</span>
               <button className="underline ml-3" onClick={() => setWriteError(null)}>Dismiss</button>
             </div>
           )}
@@ -224,11 +298,21 @@ function AdminPortalShell({
               onDecline={() => respondIntro(activeIntro.id, "declined")}
             />
           )}
-          {view === "featured" && <AdminFeaturedTalent candidates={candidates} />}
-          {view === "sent" && <AdminSentForReview records={sentForReview} candidates={candidates} />}
+          {view === "featured" && (
+            <AdminFeaturedTalent
+              candidates={candidates}
+              featured={featured}
+              currentWeek={currentWeek}
+              setFeaturedCandidate={setFeaturedCandidate}
+              upsertWeeklyNote={upsertWeeklyNote}
+            />
+          )}
+          {view === "sent" && <AdminSentForReview records={sentForReview} companies={companies} />}
+          {view === "companies" && <AdminCompanies companies={companies} createCompany={createCompany} />}
           {view === "profile" && activeCandidate && (
             <AdminCandidateProfile
               candidate={activeCandidate}
+              companies={companies}
               updateCandidate={updateCandidate}
               onBack={() => { setActiveCandidateId(null); setView("database"); }}
               sendForReview={sendForReview}

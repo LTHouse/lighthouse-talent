@@ -3,22 +3,18 @@
 import { useMemo, type ReactNode } from "react";
 import { Zap, BookOpenCheck, Star } from "lucide-react";
 import { Card } from "@/components/ui";
-import type { Candidate } from "@/lib/data/candidates";
-import type { FeaturedItem, ReviewItem, ReviewStatus, SavedSearch, Shortlist } from "./types";
+import type { FeaturedWeek, ReviewItem, ReviewStatus, SavedSearch, Shortlist } from "./types";
 import FeaturedCarousel from "./FeaturedCarousel";
 import ReviewQueueCard from "./ReviewQueueCard";
 
 interface HomeDashboardProps {
   companyName: string;
-  candidates: Candidate[];
   reviewQueue: ReviewItem[];
-  featuredItems: FeaturedItem[];
-  currentWeekStart: string;
-  weeklyNote: string | null;
+  featured: FeaturedWeek | null;
   searches: SavedSearch[];
   shortlists: Shortlist[];
   onOpenCandidate: (id: string) => void;
-  onRespondReview: (reviewId: number, status: ReviewStatus, reason?: string) => void;
+  onRespondReview: (reviewId: string, status: ReviewStatus, reason?: string) => void;
   onRequestIntro: (id: string) => void;
   onGoSearch: () => void;
   onLoadSearch: (s: SavedSearch) => void;
@@ -36,33 +32,27 @@ function SectionHeader({ children, count }: { children: ReactNode; count?: numbe
 
 export default function HomeDashboard(props: HomeDashboardProps) {
   const {
-    companyName, candidates, reviewQueue, featuredItems, currentWeekStart, weeklyNote,
-    searches, shortlists, onOpenCandidate, onRespondReview, onRequestIntro, onGoSearch, onLoadSearch, onOpenShortlist,
+    companyName, reviewQueue, featured, searches, shortlists,
+    onOpenCandidate, onRespondReview, onRequestIntro, onGoSearch, onLoadSearch, onOpenShortlist,
   } = props;
 
   const greetingName = companyName || "team";
-  const sortedQueue = useMemo(() => [...reviewQueue].sort((a, b) => b.sentAt.localeCompare(a.sentAt)), [reviewQueue]);
+  // Items are already created_at-desc from the data layer; show the un-acted-on
+  // (pending) ones first, then any the company has already responded to.
+  const sortedQueue = useMemo(() => {
+    const pending = reviewQueue.filter((r) => r.status === "pending");
+    const responded = reviewQueue.filter((r) => r.status !== "pending");
+    return [...pending, ...responded];
+  }, [reviewQueue]);
 
-  // All-time featured: dedupe by candidate (latest feature wins), newest-first.
-  const allTimeFeatured = useMemo(() => {
-    const flat = [...featuredItems]
-      .filter((f) => f.weekStarting <= currentWeekStart)
-      .sort((a, b) => b.weekStarting.localeCompare(a.weekStarting));
-    const seen = new Set<string>();
-    const unique: FeaturedItem[] = [];
-    for (const f of flat) {
-      if (seen.has(f.candidateId)) continue;
-      seen.add(f.candidateId);
-      unique.push(f);
-    }
-    return unique;
-  }, [featuredItems, currentWeekStart]);
+  const featuredEntries = featured?.entries ?? [];
+  const weeklyNote = featured?.weeklyNote ?? null;
 
-  const recentSearches = [...searches].slice(-3).reverse();
-  const recentShortlists = [...shortlists].slice(-3).reverse();
+  const recentSearches = searches.slice(0, 3);
+  const recentShortlists = shortlists.slice(0, 3);
   const totalSavedSearches = searches.length;
   const totalShortlists = shortlists.length;
-  const lastSearch = searches[searches.length - 1];
+  const lastSearch = searches[0];
 
   return (
     <div>
@@ -77,12 +67,12 @@ export default function HomeDashboard(props: HomeDashboardProps) {
         {weeklyNote && (
           <blockquote className="border-l-4 border-amber-400 pl-4 py-1 text-base text-stone-700 italic mb-5 max-w-3xl">{weeklyNote}</blockquote>
         )}
-        {allTimeFeatured.length === 0 ? (
+        {featuredEntries.length === 0 ? (
           <p className="text-sm text-stone-500">
             No featured talent yet. <button onClick={onGoSearch} className="text-amber-600 hover:underline">Browse the full network →</button>
           </p>
         ) : (
-          <FeaturedCarousel allFeatures={allTimeFeatured} currentWeekStart={currentWeekStart} candidates={candidates} onOpenCandidate={onOpenCandidate} />
+          <FeaturedCarousel entries={featuredEntries} onOpenCandidate={onOpenCandidate} />
         )}
       </section>
 
@@ -94,7 +84,7 @@ export default function HomeDashboard(props: HomeDashboardProps) {
         ) : (
           <div className="flex gap-3 overflow-x-auto pb-3 -mx-1 px-1 snap-x snap-mandatory">
             {sortedQueue.map((r) => {
-              const c = candidates.find((cand) => cand.id === r.candidateId);
+              const c = r.candidate;
               if (!c) return null;
               return <ReviewQueueCard key={r.id} review={r} candidate={c}
                 onOpen={() => onOpenCandidate(c.id)}
@@ -121,8 +111,8 @@ export default function HomeDashboard(props: HomeDashboardProps) {
                   {recentSearches.map((s) => (
                     <button key={s.id} onClick={() => onLoadSearch(s)} className="w-full text-left flex items-center justify-between gap-2 py-2.5 hover:text-amber-600 group">
                       <div className="min-w-0 flex-1">
-                        <div className="font-semibold text-sm truncate">{s.name}</div>
-                        <div className="text-xs text-stone-500">{s.createdAt}{s.results !== undefined ? ` · ${s.results} results` : ""}</div>
+                        <div className="font-semibold text-sm truncate">{s.name ?? "Untitled search"}</div>
+                        <div className="text-xs text-stone-500">{s.createdAt.slice(0, 10)}{s.results !== null ? ` · ${s.results} results` : ""}</div>
                       </div>
                       <span className="text-xs font-bold text-stone-500 group-hover:text-amber-600 flex-shrink-0">Run →</span>
                     </button>
@@ -142,8 +132,8 @@ export default function HomeDashboard(props: HomeDashboardProps) {
                   {recentShortlists.map((s) => (
                     <button key={s.id} onClick={onOpenShortlist} className="w-full text-left flex items-center justify-between gap-2 py-2.5 hover:text-amber-600 group">
                       <div className="min-w-0 flex-1">
-                        <div className="font-semibold text-sm truncate">{s.name}</div>
-                        <div className="text-xs text-stone-500">{s.candidateIds.length} candidates{s.createdAt ? ` · ${s.createdAt}` : ""}</div>
+                        <div className="font-semibold text-sm truncate">{s.name ?? "Untitled shortlist"}</div>
+                        <div className="text-xs text-stone-500">{s.candidateIds.length} candidates{s.createdAt ? ` · ${s.createdAt.slice(0, 10)}` : ""}</div>
                       </div>
                       <span className="text-xs font-bold text-stone-500 group-hover:text-amber-600 flex-shrink-0">Open →</span>
                     </button>
