@@ -1,0 +1,49 @@
+name: Feature request
+description: Ask for a new feature or change to the product
+labels: [feature]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe what you want in plain language — no technical jargon needed.
+        The clearer the answers, the cleaner the change Claude can build.
+  - type: textarea
+    id: what
+    attributes:
+      label: What should the user see or be able to do?
+      description: Plain language. Describe it from the user's point of view.
+      placeholder: "On the company candidate search, I want a filter for years of experience so I can narrow to senior people."
+    validations:
+      required: true
+  - type: dropdown
+    id: who
+    attributes:
+      label: Which user is this for?
+      options:
+        - Talent
+        - Company
+        - Admin
+        - Multiple
+    validations:
+      required: true
+  - type: textarea
+    id: proof
+    attributes:
+      label: How will we know it worked?
+      description: What's the user-visible proof the change is done?
+      placeholder: "When I'm on the company search and pick '5+ years', only candidates with 5 or more years show."
+    validations:
+      required: true
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: Anything Claude should NOT do?
+      description: Optional. Anything explicitly out of scope, so Claude doesn't over-build.
+      placeholder: "Don't change the existing role filter. Don't touch the talent side."
+    validations:
+      required: false
+  - type: markdown
+    attributes:
+      value: |
+        ---
+        **When you're ready for Claude to build this, post a comment on the issue containing `@claude`. The builder will open a PR within a few minutes.**

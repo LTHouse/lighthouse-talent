@@ -1,0 +1,56 @@
+name: Bug report
+description: Something is broken or wrong
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Tell us what went wrong. Screenshots help — paste them into any box.
+  - type: textarea
+    id: happened
+    attributes:
+      label: What happened?
+      placeholder: "I clicked 'Request intro' and nothing happened."
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+      placeholder: "I expected a confirmation that the intro request was sent."
+    validations:
+      required: true
+  - type: input
+    id: url
+    attributes:
+      label: What URL were you on?
+      placeholder: "https://lighthouse-talent.vercel.app/company/search"
+    validations:
+      required: true
+  - type: dropdown
+    id: role
+    attributes:
+      label: Which role were you logged in as?
+      options:
+        - Talent
+        - Company
+        - Admin
+        - Not logged in
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Optional but very helpful — the exact clicks that lead to the problem.
+      placeholder: |
+        1. Sign in as a company
+        2. Open a candidate profile
+        3. Click "Request intro"
+    validations:
+      required: false
+  - type: markdown
+    attributes:
+      value: |
+        ---
+        **When you're ready for Claude to fix this, post a comment on the issue containing `@claude`. The builder will open a PR within a few minutes.**
